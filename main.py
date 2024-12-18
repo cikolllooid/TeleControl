@@ -109,12 +109,10 @@ def play_sound(message):
             bot.send_message(message.chat.id, "Usage: /mouse")
             return
 
-        current_user = getpass.getuser()
-
         for device_id in devices.keys():
             set_volume()
             pygame.init()
-            song = pygame.mixer.Sound(rf'C:\{current_user}\AppData\Local\Roblox\Musics\ass.mp3')
+            song = pygame.mixer.Sound('ass.mp3')
             song.play()
             
             time.sleep(song.get_length())
