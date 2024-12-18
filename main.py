@@ -19,7 +19,7 @@ from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 from comtypes import CLSCTX_ALL, CoInitialize, CoUninitialize
 import pygame
 
-bot_token = '7615104148:AAFk0NVPm-tpooR-83rY7tpFHr0K58VpIHk'
+bot_token = 'your bot token from -> @BotFather'
 bot = telebot.TeleBot(bot_token)
 
 devices = {}
