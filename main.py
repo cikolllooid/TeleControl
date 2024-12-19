@@ -375,7 +375,11 @@ def run_command(message):
             bot.send_message(message.chat.id, "Usage: /cmd <command>")
             return
 
-        command = args[1]
+        command = message.text[len('/cmd '):].strip()
+        
+        if not command:
+            bot.send_message(message.chat.id, "Usage: /cmd <command>")
+            return
 
         subprocess.Popen(command, shell=True)
         bot.send_message(message.chat.id, f"Broadcast command executed with command: {command}")
