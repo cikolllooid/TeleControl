@@ -19,6 +19,7 @@ from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 from comtypes import CLSCTX_ALL, CoInitialize, CoUninitialize
 import pygame
 import pyperclip
+from keys import keys
 
 bot_token = 'your bot token from -> @BotFather'
 bot = telebot.TeleBot(bot_token)
@@ -84,8 +85,12 @@ def send_welcome(message):
         "/block_hotkeys hotkey1;hotkey2 - Block specific Hotkeys\n"
         "/unblock_hotkeys - Unblock all Hotkeys\n"
         "/block_keys_kb a;b;c - Block specific keys\n"
-        "/unblock_keys_kb - Unblock all keys\n"
+        "/unblock_keys_kb - Unblock specific keys\n"
         "/buffer - Retrieve the computer's buffer information\n"
+        "/block_all_keys - locks all keys\n"
+        "/unblock_all_keys - Unblock all keys\n"
+        "/mouse_block - Blocking the mouse\n"
+        "/mouse_block_stop - Unblocks the mouse\n"
     )
     
 @bot.message_handler(commands=['buffer'])
@@ -179,6 +184,10 @@ def block_keys_kb(message):
 def unblock_keys(message):
     global blocking_active, keys_to_block
 
+    args = message.text.split(' ', 1)
+    if len(args) < 1:
+        bot.send_message(message.chat.id, "Usage: /unblock_keys")
+        return
     if not blocking_active:
         bot.send_message(message.chat.id, "The keys are not locked.")
         return
@@ -188,6 +197,54 @@ def unblock_keys(message):
         kb.unblock_key(key)
     keys_to_block = [] 
     bot.send_message(message.chat.id, "Keys unlocked.")
+
+@bot.message_handler(commands=['block_all_keys'])
+def block_all_keys(message):
+    global blocking_active, keys
+
+    args = message.text.split(' ', 1)
+    if len(args) < 1:
+        bot.send_message(message.chat.id, "Usage: /block_all_keys")
+        return
+    if blocking_active:
+        bot.send_message(message.chat.id, "The keys are already locked.")
+        return
+    
+    blocking_active = True
+
+    def block_all_keys():
+        try:
+            for key in keys:
+                kb.block_key(key)
+            bot.send_message(message.chat.id, f"All keys are blocked. Use /unblock_keys to unblock it.")
+            while blocking_active:
+                time.sleep(1)
+        except Exception as e:
+            bot.send_message(message.chat.id, f"Key lock error: {e}")
+
+    blocking_thread = threading.Thread(target=block_all_keys, daemon=True)
+    blocking_thread.start()
+
+@bot.message_handler(commands=['unblock_all_keys'])
+def unblock_keys(message):
+    global blocking_active, keys
+
+    args = message.text.split(' ', 1)
+    if len(args) < 1:
+        bot.send_message(message.chat.id, "Usage: /unblock_all_keys")
+        return
+    if not blocking_active:
+        bot.send_message(message.chat.id, "The keys are not locked.")
+        return
+
+    blocking_active = False
+    try:
+        for key in keys:
+            kb.unblock_key(key)
+    except:
+        pass
+    bot.send_message(message.chat.id, "Keys unlocked.")
+
 
 @bot.message_handler(commands=['block_app'])
 def block_task_manager(message):
@@ -218,6 +275,55 @@ def block_task_manager(message):
         bot.send_message(message.chat.id, "All apps are unblocked now.")
     except Exception as e:
         print(f"Error in blocking Task Manager: {e}")
+
+mouse_block = False
+
+def keep_cursor_centered():
+    global mouse_block
+    screen_width, screen_height = pyautogui.size()
+    center_x, center_y = screen_width // 2, screen_height // 2
+    
+    try:
+        while not mouse_block:
+            pyautogui.moveTo(center_x, center_y, duration=0.1)
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        print("Центрирование курсора остановлено.")
+
+@bot.message_handler(commands=['mouse_block'])
+def block_mouse(message):
+    global mouse_block
+    try:
+        args = message.text.split(' ')
+        if len(args) < 1:
+            bot.send_message(message.chat.id, "Usage: /mouse_block")
+            return
+        if not mouse_block:
+            bot.send_message(message.chat.id, "the mouse is already locked")
+            return
+        
+        mouse_block = False
+        threading.Thread(target=keep_cursor_centered, daemon=True).start()
+        bot.send_message(message.chat.id, f"mouse_blocked executed to all")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Error: {e}")
+
+@bot.message_handler(commands=['mouse_block_stop'])
+def move_mousik(message):
+    global mouse_block
+    try:
+        args = message.text.split(' ')
+        if len(args) < 1:
+            bot.send_message(message.chat.id, "Usage: /mouse_block_stop")
+            return
+        if mouse_block:
+            bot.send_message(message.chat.id, "the mouse is already unlocked")
+            return
+
+        mouse_block = True
+        bot.send_message(message.chat.id, f"mouse_block executed on all")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Error: {e}")
 
 @bot.message_handler(commands=['mouse'])
 def move_mousik(message):
